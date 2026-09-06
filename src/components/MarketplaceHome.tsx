@@ -1,0 +1,225 @@
+import React, { useState } from 'react';
+import { 
+  Search, 
+  Filter, 
+  ShieldCheck, 
+  Sparkles, 
+  Check, 
+  Eye, 
+  MessageSquare, 
+  AlertTriangle,
+  ArrowUpDown,
+  Tag
+} from 'lucide-react';
+import { Product, ProductCondition } from '../types';
+
+interface MarketplaceHomeProps {
+  products: Product[];
+  onSelectProduct: (product: Product) => void;
+  onOpenCreateModal: () => void;
+}
+
+export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
+  products,
+  onSelectProduct,
+  onOpenCreateModal
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedModel, setSelectedModel] = useState('ALL');
+  const [selectedCondition, setSelectedCondition] = useState('ALL');
+  const [priceSort, setPriceSort] = useState<'default' | 'asc' | 'desc'>('default');
+
+  // Lọc sản phẩm
+  const filteredProducts = products.filter(p => {
+    if (p.status !== 'active') return false;
+
+    const matchesSearch = 
+      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.serialNumber.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesModel = selectedModel === 'ALL' || p.model.includes(selectedModel);
+    const matchesCondition = selectedCondition === 'ALL' || p.condition === selectedCondition;
+
+    return matchesSearch && matchesModel && matchesCondition;
+  }).sort((a, b) => {
+    if (priceSort === 'asc') return a.price - b.price;
+    if (priceSort === 'desc') return b.price - a.price;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Hero Banner trường học */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white p-6 sm:p-10 shadow-xl">
+        <div className="relative z-10 max-w-2xl space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-semibold tracking-wide uppercase text-blue-200">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            Xác thực danh sách trường • Mã hoá PII AES-256
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+            Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-3xl sm:text-4xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
+          </h1>
+          <p className="text-sm text-blue-100/90 leading-relaxed">
+            Trao đổi máy tính Casio FX-580VN, FX-570VN, Flexio giữa học sinh trong trường. 100% giao dịch có biên bản video 5 bước và thẩm định Serial Number chính hãng.
+          </p>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button
+              onClick={onOpenCreateModal}
+              className="px-5 py-2.5 bg-white text-blue-700 font-bold text-xs sm:text-sm rounded-xl hover:bg-blue-50 transition shadow-md"
+            >
+              Đăng Bán Máy Tính Của Bạn
+            </button>
+            <a
+              href="#filters"
+              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm rounded-xl backdrop-blur transition"
+            >
+              Khám Phá Máy Tính ({filteredProducts.length})
+            </a>
+          </div>
+        </div>
+
+        {/* Decorative background circle */}
+        <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      </div>
+
+      {/* Thanh tìm kiếm & bộ lọc đa tiêu chí */}
+      <div id="filters" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Tìm theo tên máy, mã S/N, model Casio hoặc Flexio..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+            >
+              <option value="ALL">Tất cả Model</option>
+              <option value="FX-580VN">Casio FX-580VN X</option>
+              <option value="FX-570VN">Casio FX-570VN Plus</option>
+              <option value="FX-880BTG">Casio FX-880BTG</option>
+              <option value="Flexio">Flexio (Thiên Long)</option>
+            </select>
+
+            <select
+              value={selectedCondition}
+              onChange={(e) => setSelectedCondition(e.target.value)}
+              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+            >
+              <option value="ALL">Tất cả tình trạng</option>
+              <option value="brand_new">Mới tinh (Chưa dùng)</option>
+              <option value="like_new">Như mới</option>
+              <option value="used_good">Đã qua sử dụng</option>
+            </select>
+
+            <select
+              value={priceSort}
+              onChange={(e) => setPriceSort(e.target.value as any)}
+              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+            >
+              <option value="default">Mới nhất</option>
+              <option value="asc">Giá: Thấp đến Cao</option>
+              <option value="desc">Giá: Cao đến Thấp</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid danh sách máy tính hoặc Trạng thái trống */}
+      {filteredProducts.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center max-w-lg mx-auto shadow-xs space-y-4 my-6">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
+            <Tag className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-slate-900">Chưa có máy tính nào được đăng</h3>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Chợ học đường hiện chưa có sản phẩm nào. Hãy là người đầu tiên đăng bán máy tính Casio hoặc Flexio của bạn!
+            </p>
+          </div>
+          <button
+            onClick={onOpenCreateModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition"
+          >
+            <Sparkles className="w-4 h-4" /> Đăng Bán Máy Tính Ngay
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProducts.map(product => (
+            <div
+              key={product.id}
+              onClick={() => onSelectProduct(product)}
+              className="group bg-white rounded-3xl border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition duration-200 cursor-pointer flex flex-col"
+            >
+              {/* Ảnh đại diện & Badge */}
+              <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
+                <img
+                  src={product.imageUrls[0]}
+                  alt={product.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                />
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                  {product.snStatus === 'genuine' && (
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/90 backdrop-blur text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> S/N Chính Hãng
+                    </span>
+                  )}
+                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-semibold">
+                    {product.condition === 'like_new' ? 'Như mới' : product.condition === 'brand_new' ? 'Mới 100%' : 'Đã qua sử dụng'}
+                  </span>
+                </div>
+
+                {product.demoVideoUrl && (
+                  <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-blue-600/90 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs">
+                    🎬 Video Test
+                  </span>
+                )}
+              </div>
+
+              {/* Thông tin sản phẩm */}
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+                    <span className="font-semibold text-indigo-600">{product.model}</span>
+                    <span className="text-slate-400">Chat thỏa thuận</span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition">
+                    {product.title}
+                  </h3>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block">Giá thanh toán</span>
+                    <span className="text-base font-extrabold text-blue-600">
+                      {product.price.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[11px] font-bold text-slate-700 block truncate max-w-[120px]">
+                      {product.sellerDisplayName}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-0.5">
+                      <Sparkles className="w-2.5 h-2.5" /> Trust {product.sellerTrustScore}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

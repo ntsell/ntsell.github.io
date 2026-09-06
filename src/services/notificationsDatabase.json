@@ -1,0 +1,35 @@
+[
+  {
+    "userId": "admin_root",
+    "type": "new_message",
+    "title": "Tin nhắn mới từ Quản Trị Viên 2 (Admin 2)",
+    "message": "cccccccccccccccccccccc",
+    "linkTab": "chat",
+    "relatedId": "conv-1788670679912",
+    "id": "notif-1788679123824-78gu",
+    "isRead": true,
+    "createdAt": "2026-09-06T07:18:43.824Z"
+  },
+  {
+    "userId": "admin_secondary",
+    "type": "product_rejected",
+    "title": "Yêu cầu bán máy đã bị Từ Chối (Bỏ hoàn toàn)",
+    "message": "Bài đăng \"dâdsad\" đã bị từ chối duyệt. Lý do: Thông tin máy hoặc hình ảnh tem chống giả không khớp quy chế trường",
+    "linkTab": "dashboard",
+    "relatedId": "prod-1788679088318",
+    "id": "notif-1788679109763-1mgz",
+    "isRead": true,
+    "createdAt": "2026-09-06T07:18:29.763Z"
+  },
+  {
+    "userId": "admin",
+    "type": "system",
+    "title": "Có yêu cầu bán máy mới cần duyệt",
+    "message": "Quản Trị Viên 2 (Admin 2) vừa gửi yêu cầu duyệt máy \"dâdsad\" (Casio FX-580VN X).",
+    "linkTab": "admin",
+    "relatedId": "prod-1788679088318",
+    "id": "notif-1788679088979-78hf",
+    "isRead": true,
+    "createdAt": "2026-09-06T07:18:08.979Z"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "msg-1788670683089",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "hi",
+    "createdAt": "2026-09-06T04:58:03.089Z"
+  },
+  {
+    "id": "msg-1788676910143",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "hi",
+    "createdAt": "2026-09-06T06:41:50.143Z"
+  },
+  {
+    "id": "msg-1788676933184",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "hello",
+    "createdAt": "2026-09-06T06:42:13.184Z"
+  },
+  {
+    "id": "msg-1788676947873",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "adadadad",
+    "createdAt": "2026-09-06T06:42:27.873Z"
+  },
+  {
+    "id": "msg-1788676954705",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "ffawdsa",
+    "createdAt": "2026-09-06T06:42:34.705Z"
+  },
+  {
+    "id": "msg-1788676958737",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_root",
+    "senderDisplayName": "Quản Trị Viên (Admin 1)",
+    "messageText": "ddđ",
+    "createdAt": "2026-09-06T06:42:38.737Z"
+  },
+  {
+    "id": "msg-1788679123822",
+    "conversationId": "conv-1788670679912",
+    "senderId": "admin_secondary",
+    "senderDisplayName": "Quản Trị Viên 2 (Admin 2)",
+    "messageText": "cccccccccccccccccccccc",
+    "createdAt": "2026-09-06T07:18:43.822Z"
+  }
+]
