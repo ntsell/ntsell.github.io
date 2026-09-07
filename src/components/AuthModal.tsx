@@ -1014,7 +1014,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-700">
-                    Mã OTP (6 chữ số) *
+                    Mã Xác Thực OTP *
                   </label>
                   <button
                     type="button"
@@ -1026,9 +1026,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
                 <input
                   type="text"
-                  maxLength={6}
+                  maxLength={8}
                   required
-                  placeholder="Nhập mã 6 số ví dụ: 123456"
+                  placeholder="Nhập mã xác thực từ email..."
                   value={userEnteredOtp}
                   onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))}
                   className="w-full px-3.5 py-2.5 text-center text-lg tracking-widest font-mono font-bold rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
