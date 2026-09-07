@@ -37,6 +37,7 @@ interface AdminPanelProps {
   onRequestEditProduct?: (id: string, reason: string) => void;
   onTakeDownProduct?: (id: string, reason?: string) => void;
   onResolveDispute: (disputeId: string, resolution: any) => void;
+  onRefreshProducts?: () => Promise<void> | void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -47,7 +48,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRejectProduct,
   onRequestEditProduct,
   onTakeDownProduct,
-  onResolveDispute
+  onResolveDispute,
+  onRefreshProducts
 }) => {
   const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster'>('products');
   const [cronResult, setCronResult] = useState<any>(null);
@@ -59,6 +61,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [requestEditReason, setRequestEditReason] = useState('');
   const [takeDownProduct, setTakeDownProduct] = useState<Product | null>(null);
   const [takeDownReason, setTakeDownReason] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Quản lý yêu cầu xác minh tài khoản từ học sinh không có trong danh sách
   const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>(() => {
@@ -111,10 +114,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {onRefreshProducts && (
+            <button
+              onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                  await onRefreshProducts();
+                } finally {
+                  setTimeout(() => setIsRefreshing(false), 500);
+                }
+              }}
+              disabled={isRefreshing}
+              className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              title="Đồng bộ danh sách tức thì từ máy chủ Supabase"
+            >
+              <RefreshCw className={`w-4 h-4 text-blue-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Đang đồng bộ...' : 'Đồng bộ Supabase'}
+            </button>
+          )}
           <span className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold flex items-center gap-1.5">
             <Lock className="w-4 h-4 text-indigo-600" />
-            API Security: OWASP Hardened & S/N Masking
+            API Security: OWASP Hardened
           </span>
           <span className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />

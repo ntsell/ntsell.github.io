@@ -605,6 +605,14 @@ export function App() {
         setCurrentTab={(tab) => {
           setSelectedProduct(null);
           setCurrentTab(tab);
+          if (tab === 'admin') {
+            fetchProductsFromSupabase().then(fresh => {
+              if (Array.isArray(fresh)) {
+                setProducts(fresh);
+                localStorage.setItem('ntsell_products', JSON.stringify(fresh));
+              }
+            });
+          }
         }}
         currentUser={currentUser}
         pendingCount={products.filter(p => p.status === 'pending_admin').length}
@@ -621,8 +629,11 @@ export function App() {
           {currentTab === 'home' && (
             <MarketplaceHome
               products={products}
+              currentUser={currentUser}
+              pendingCount={products.filter(p => p.status === 'pending_admin').length}
               onSelectProduct={handleSelectProduct}
               onOpenCreateModal={() => setCurrentTab('create_post')}
+              onNavigateToAdmin={() => setCurrentTab('admin')}
             />
           )}
 
@@ -745,6 +756,7 @@ export function App() {
                   setCurrentTab('create_post');
                 }}
                 onDeleteProduct={handleDeleteProduct}
+                onNavigateToAdmin={() => setCurrentTab('admin')}
               />
             ) : (
               <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 shadow-sm text-center space-y-4">
@@ -775,6 +787,13 @@ export function App() {
               onRejectProduct={handleRejectProduct}
               onTakeDownProduct={handleTakeDownProduct}
               onResolveDispute={(id, res) => setDisputes(disputes.map(d => d.id === id ? { ...d, status: res } : d))}
+              onRefreshProducts={async () => {
+                const fresh = await fetchProductsFromSupabase();
+                if (Array.isArray(fresh)) {
+                  setProducts(fresh);
+                  localStorage.setItem('ntsell_products', JSON.stringify(fresh));
+                }
+              }}
             />
           )}
         </div>

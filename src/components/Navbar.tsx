@@ -76,6 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const mobileNavItems = [
     { id: 'home', label: 'Chợ máy', icon: Calculator },
     { id: 'create_post', label: 'Đăng bán', icon: PlusCircle },
+    ...(currentUser?.role === 'admin' ? [{ id: 'admin', label: 'Quản trị', icon: HardDrive }] : []),
     { id: 'transactions', label: 'Giao dịch', icon: ShieldCheck },
     { id: 'chat', label: 'Tin nhắn', icon: MessageSquare },
     { id: 'dashboard', label: 'Cá nhân', icon: User },
@@ -540,11 +541,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     onClick={() => setCurrentTab('admin')}
                     title="Bảng Quản Trị Hệ Thống"
-                    className="relative p-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition"
+                    className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition font-bold text-xs shadow-xs"
                   >
-                    <HardDrive className="w-5 h-5" />
+                    <HardDrive className="w-4 h-4 text-indigo-600" />
+                    <span className="hidden sm:inline">Quản Trị</span>
                     {pendingCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-bounce">
+                      <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-black rounded-full animate-bounce">
                         {pendingCount}
                       </span>
                     )}
@@ -621,6 +623,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 } ${isShatteringThis ? 'tab-shatter-vanish' : ''} ${isRegrouping ? 'tab-regroup-snap' : ''}`}
               >
                 <Icon className="w-5 h-5" />
+                {item.id === 'admin' && pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white animate-bounce">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </span>
+                )}
                 {item.id === 'chat' && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-600 rounded-full border border-white animate-pulse" />
                 )}

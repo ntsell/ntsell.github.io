@@ -22,6 +22,7 @@ interface UserDashboardProps {
   onUpdateDisplayName: (newName: string) => void;
   onEditProduct?: (product: Product) => void;
   onDeleteProduct?: (productId: string) => void;
+  onNavigateToAdmin?: () => void;
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({
@@ -30,7 +31,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   transactions,
   onUpdateDisplayName,
   onEditProduct,
-  onDeleteProduct
+  onDeleteProduct,
+  onNavigateToAdmin
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState(currentUser.displayName);
@@ -88,12 +90,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setIsEditingName(true)}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
-        >
-          Đổi Tên Hiển Thị (Display Name)
-        </button>
+        <div className="flex items-center gap-2">
+          {currentUser.role === 'admin' && onNavigateToAdmin && (
+            <button
+              onClick={onNavigateToAdmin}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-4 h-4" /> Mở Bảng Quản Trị (Admin)
+            </button>
+          )}
+          <button
+            onClick={() => setIsEditingName(true)}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+          >
+            Đổi Tên Hiển Thị (Display Name)
+          </button>
+        </div>
       </div>
 
       {/* Modal đổi tên hiển thị với Gemini 2.5 Moderation */}
