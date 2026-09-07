@@ -21,6 +21,7 @@ import { StudentRosterItem, UserProfile, VerificationRequest } from '../types';
 import { moderateDisplayName } from '../services/geminiModeration';
 import { encryptSensitiveData, generateUsernameFromRealName } from '../services/cryptoService';
 import { supabase } from '../services/supabaseClient';
+import { registerDeviceSession } from '../services/sessionService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -92,6 +93,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [geminiSuggestion, setGeminiSuggestion] = useState<string | null>(null);
+
+  // Single-device mode collision warning
+  const [deviceWarningInfo, setDeviceWarningInfo] = useState<{
+    user: UserProfile;
+    previousDeviceName: string;
+  } | null>(null);
+
+  const completeLoginWithSession = async (user: UserProfile, forceOverride: boolean = false) => {
+    try {
+      const regRes = await registerDeviceSession(user.id, forceOverride);
+      if (regRes.needsDeviceWarning && !forceOverride) {
+        setDeviceWarningInfo({
+          user,
+          previousDeviceName: regRes.previousDeviceName || 'Thiết bị khác'
+        });
+        return false;
+      }
+      onLoginSuccess(user);
+      onClose();
+      return true;
+    } catch {
+      // Fallback nếu có lỗi
+      onLoginSuccess(user);
+      onClose();
+      return true;
+    }
+  };
 
   // Tab Indicator Animation
   const [tabIndicatorStyle, setTabIndicatorStyle] = useState<{ left: string; width: string }>({
@@ -242,8 +270,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         };
 
         setIsLoading(false);
-        onLoginSuccess(adminUser);
-        onClose();
+        await completeLoginWithSession(adminUser);
       } catch (err: any) {
         setIsLoading(false);
         setErrorMessage('Lỗi xác thực hệ thống: ' + (err?.message || 'Vui lòng thử lại'));
@@ -332,8 +359,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           createdAt: new Date().toISOString()
         };
 
-        onLoginSuccess(loggedInUser);
-        onClose();
+        await completeLoginWithSession(loggedInUser);
       }, 500);
       return;
     }
@@ -492,8 +518,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     };
 
     setIsLoading(false);
-    onLoginSuccess(newUser);
-    onClose();
+    await completeLoginWithSession(newUser);
   };
 
   // Nộp đơn gửi Admin duyệt khi không khớp
@@ -586,6 +611,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
+          {/* ================================================================= */}
+          {/* CẢNH BÁO THIẾT BỊ ĐANG ĐĂNG NHẬP Ở NƠI KHÁC (SINGLE-DEVICE MODE)   */}
+          {/* ================================================================= */}
+          {deviceWarningInfo && (
+            <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-4 mb-4 text-center animate-in zoom-in-95">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-amber-950 uppercase tracking-wide">
+                  Phát hiện phiên đăng nhập khác
+                </h4>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Tài khoản của bạn hiện đang hoạt động trên: <br/>
+                  <span className="font-bold text-amber-950 bg-amber-200/70 px-2 py-0.5 rounded-md inline-block my-1">
+                    💻 {deviceWarningInfo.previousDeviceName}
+                  </span>
+                  <br/>
+                  Do chính sách <b>đơn thiết bị (Single-device)</b> để bảo vệ thông tin học sinh, nếu bạn tiếp tục, thiết bị cũ sẽ tự động bị đăng xuất ngay lập tức.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDeviceWarningInfo(null)}
+                  className="flex-1 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-300 shadow-xs"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const user = deviceWarningInfo.user;
+                    setDeviceWarningInfo(null);
+                    await completeLoginWithSession(user, true);
+                  }}
+                  className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md shadow-amber-600/20 transition"
+                >
+                  Đăng Xuất Thiết Bị Cũ & Tiếp Tục
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ================================================================= */}
           {/* STEP 1: NHẬP THÔNG TIN (Tên thật, Lớp học, Email / Mật khẩu)       */}
           {/* ================================================================= */}

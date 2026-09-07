@@ -22,11 +22,13 @@ import {
   ExternalLink,
   Ban,
   HelpCircle,
-  Edit3
+  Edit3,
+  Laptop
 } from 'lucide-react';
 import { Product, Transaction, Dispute, VerificationRequest, UserProfile } from '../types';
 import { driveStorage } from '../services/driveStorage';
 import { runAutoDeleteVideosJob } from '../services/autoDeleteWorker';
+import { AdminSessions } from './AdminSessions';
 
 interface AdminPanelProps {
   products: Product[];
@@ -51,7 +53,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onResolveDispute,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster' | 'sessions'>('products');
   const [cronResult, setCronResult] = useState<any>(null);
   const [isCronRunning, setIsCronRunning] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
@@ -217,6 +219,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <Users className="w-3.5 h-3.5" />
           Yêu Cầu Xác Minh Tài Khoản ({pendingRequests.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sessions')}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === 'sessions' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Laptop className="w-3.5 h-3.5" />
+          Quản Lý Phiên Thiết Bị (Sessions)
         </button>
       </div>
 
@@ -960,6 +972,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Content 6: Quản lý phiên thiết bị Sessions */}
+      {activeTab === 'sessions' && (
+        <AdminSessions />
       )}
     </div>
   );

@@ -170,3 +170,16 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export interface UserSession {
+  id: string;
+  userId: string;
+  userDisplayName?: string;
+  deviceFingerprint: string;
+  deviceName: string;
+  ipAddress?: string;
+  lastActivity: string;
+  createdAt: string;
+  isActive: boolean;
+}
+
+

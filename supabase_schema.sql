@@ -177,12 +177,49 @@ INSERT INTO school_students_roster (real_name, class_name, student_code) VALUES
 ('Phạm Minh Châu', '11B2', 'HS11B2-22'),
 ('Vũ Đức Thắng', '12C3', 'HS12C3-08'),
 ('Đỗ Thảo Vy', '12C3', 'HS12C3-30')
-ON CONFLICT DO NOTHING;
+-- 12. USER SESSIONS & SINGLE-DEVICE SESSION MANAGEMENT
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  device_fingerprint TEXT NOT NULL,
+  device_name TEXT,
+  ip_address TEXT,
+  last_activity TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT true,
+  UNIQUE(user_id, device_fingerprint)
+);
 
-INSERT INTO genuine_serial_numbers (serial_number, model, manufacturer, verification_status, notes) VALUES
-('580VNX-998234-VN', 'Casio FX-580VN X', 'Casio', 'genuine', 'Chính hãng Bitex phân phối'),
-('580VNX-774921-VN', 'Casio FX-580VN X', 'Casio', 'genuine', 'Chính hãng Bitex phân phối'),
-('570VNP-382910-VN', 'Casio FX-570VN Plus 2nd Edition', 'Casio', 'genuine', 'Tem chống giả phản quang'),
-('FLX-799VN-00912', 'Flexio FX799VN', 'Flexio', 'genuine', 'Sản phẩm Bộ GD phê duyệt'),
-('FAKE-580VN-00000', 'Casio FX-580VN Fake', 'Unverified', 'counterfeit', 'Mã báo cáo hàng nhái màn hình nhạt')
-ON CONFLICT DO NOTHING;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- User chỉ xem & logout session của chính mình
+CREATE POLICY "User xem session rieng" ON user_sessions
+FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "User logout session rieng" ON user_sessions
+FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "User cap nhat last_activity" ON user_sessions
+FOR UPDATE USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Admin xem & quản lý tất cả sessions
+CREATE POLICY "Admin xem tat ca session" ON user_sessions
+FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE POLICY "Admin logout session" ON user_sessions
+FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Cho phép tạo / upsert session
+CREATE POLICY "System tao session" ON user_sessions
+FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "System update session" ON user_sessions
+FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_active ON user_sessions(user_id, is_active);
+

@@ -11,6 +11,9 @@ import { WikiTerms } from './components/WikiTerms';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
+import { DeviceWarning } from './components/DeviceWarning';
+import { useSessionMonitor } from './hooks/useSessionMonitor';
+import { terminateCurrentSession } from './services/sessionService';
 
 import { 
   INITIAL_ROSTER, 
@@ -50,6 +53,21 @@ export function App() {
   });
 
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [isDeviceRevoked, setIsDeviceRevoked] = useState<boolean>(false);
+
+  const handleForceLogout = () => {
+    setIsDeviceRevoked(false);
+    if (currentUser?.id) {
+      terminateCurrentSession(currentUser.id);
+    }
+    setCurrentUser(null);
+    localStorage.removeItem('ntsell_current_user');
+  };
+
+  // Monitor single-device session & remote revokes
+  useSessionMonitor(currentUser, () => {
+    setIsDeviceRevoked(true);
+  });
 
   const [products, setProducts] = useState<Product[]>(() => {
     try {
@@ -639,7 +657,13 @@ export function App() {
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
         onClearAllNotifications={handleClearAllNotifications}
         onOpenAuthModal={() => setIsAuthOpen(true)}
-        onLogout={() => setCurrentUser(null)}
+        onLogout={() => {
+          if (currentUser?.id) {
+            terminateCurrentSession(currentUser.id);
+          }
+          setCurrentUser(null);
+          localStorage.removeItem('ntsell_current_user');
+        }}
       />
 
       {/* Main Content View with Smooth Tab Transitions */}
@@ -831,6 +855,12 @@ export function App() {
           )}
         </div>
       </main>
+
+      {/* Device Revoked Warning Modal (Single-Device Logout) */}
+      <DeviceWarning
+        isOpen={isDeviceRevoked}
+        onConfirmLogout={handleForceLogout}
+      />
 
       {/* Auth Modal (So khớp danh sách trường & Request Verification) */}
       <AuthModal
