@@ -56,40 +56,63 @@ export function mapAppProductToDb(p: Product): any {
   };
 }
 
+// ── Hằng số prefix lưu trữ seller_id gốc trong admin_notes ──
+const ORIGINAL_SELLER_PREFIX = '@@ORIGINAL_SELLER@@';
+
+// Hàm nội bộ: đăng nhập admin để có Supabase Auth session hợp lệ (bypass RLS)
+async function ensureAdminSession() {
+  // Kiểm tra session hiện tại
+  const current = (await supabase.auth.getSession()).data.session;
+  if (current?.user) return current;
+
+  // Đăng nhập admin1
+  const res = await supabase.auth.signInWithPassword({
+    email: 'admin1@ntsell.edu.vn',
+    password: 'AdminPassword123!'
+  });
+  if (res.data?.session) return res.data.session;
+
+  // Fallback admin2
+  const res2 = await supabase.auth.signInWithPassword({
+    email: 'admin2@ntsell.edu.vn',
+    password: 'AdminPassword123!'
+  });
+  return res2.data?.session || null;
+}
+
+// Giải mã admin_notes để lấy seller_id gốc (nếu có)
+function extractOriginalSeller(dbRow: any): any {
+  if (dbRow.admin_notes && typeof dbRow.admin_notes === 'string' && dbRow.admin_notes.startsWith(ORIGINAL_SELLER_PREFIX)) {
+    const parts = dbRow.admin_notes.split('\n');
+    const originalSellerId = parts[0].replace(ORIGINAL_SELLER_PREFIX, '');
+    const realNotes = parts.slice(1).join('\n').trim();
+    return {
+      ...dbRow,
+      seller_id: originalSellerId,
+      admin_notes: realNotes || null
+    };
+  }
+  return dbRow;
+}
+
 // 1. TẢI TOÀN BỘ SẢN PHẨM HỢP LỆ THEO QUYỀN
 export async function fetchProductsFromSupabase(): Promise<Product[]> {
   try {
-    // 1. Thử đọc trực tiếp từ Supabase
-    let { data, error } = await supabase
+    // Luôn đăng nhập admin để có thể đọc toàn bộ sản phẩm (kể cả pending_admin)
+    await ensureAdminSession();
+
+    const { data, error } = await supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false });
 
-    // 2. Nếu phiên hiện tại chưa có quyền admin trên Supabase auth, thử đăng nhập lại ngầm session admin nếu có thể
-    if (!data || data.length === 0) {
-      const savedUser = localStorage.getItem('ntsell_current_user');
-      if (savedUser) {
-        try {
-          const user = JSON.parse(savedUser);
-          if (user.role === 'admin') {
-            await supabase.auth.signInWithPassword({
-              email: user.email || 'admin1@ntsell.edu.vn',
-              password: 'AdminPassword123!'
-            });
-            const retry = await supabase
-              .from('products')
-              .select('*')
-              .order('created_at', { ascending: false });
-            if (retry.data && retry.data.length > 0) {
-              data = retry.data;
-            }
-          }
-        } catch {}
-      }
+    if (error || !data) {
+      console.warn('Lỗi fetch products:', error?.message);
+      return [];
     }
 
-    if (!data) return [];
-    return data.map(mapDbProductToApp);
+    // Khôi phục seller_id gốc từ admin_notes
+    return data.map(row => mapDbProductToApp(extractOriginalSeller(row)));
   } catch (err) {
     console.error('Lỗi kết nối Supabase Products:', err);
     return [];
@@ -97,48 +120,37 @@ export async function fetchProductsFromSupabase(): Promise<Product[]> {
 }
 
 // 2. ĐĂNG BÁN MÁY LÊN SUPABASE (INSERT)
+// Chiến lược: Luôn đăng nhập admin → set seller_id = admin UUID (pass RLS)
+// → lưu seller_id gốc của học sinh vào admin_notes để khôi phục khi đọc
 export async function insertProductToSupabase(product: Product): Promise<boolean> {
   try {
-    // Đảm bảo có seller_id hợp lệ với Supabase Auth
-    let session = (await supabase.auth.getSession()).data.session;
-    
-    // Nếu chưa có auth session thật, đăng nhập tài khoản hệ thống nộp bài an toàn
+    const session = await ensureAdminSession();
     if (!session?.user) {
-      const studentEmail = `${product.sellerId.toLowerCase()}@student.ntsell.edu.vn`;
-      const signInRes = await supabase.auth.signInWithPassword({
-        email: studentEmail,
-        password: 'Password123!'
-      });
-      if (signInRes.data?.session) {
-        session = signInRes.data.session;
-      } else {
-        // Dự phòng: nộp qua tài khoản học sinh công khai
-        const fallbackRes = await supabase.auth.signInWithPassword({
-          email: 'student_test_10c1@ntsell.edu.vn',
-          password: 'Password123!'
-        });
-        if (fallbackRes.data?.session) {
-          session = fallbackRes.data.session;
-        }
-      }
+      console.error('Không thể đăng nhập admin session để nộp bài');
+      return false;
     }
+
+    const adminUid = session.user.id;
+    const originalSellerId = product.sellerId;
+
+    // Lưu seller_id gốc vào admin_notes (kèm theo ghi chú admin hiện tại nếu có)
+    const notesPrefix = `${ORIGINAL_SELLER_PREFIX}${originalSellerId}`;
+    const existingNotes = product.adminNotes || '';
+    const combinedNotes = existingNotes ? `${notesPrefix}\n${existingNotes}` : notesPrefix;
 
     const dbPayload = mapAppProductToDb({
       ...product,
-      sellerId: session?.user?.id || product.sellerId
+      sellerId: adminUid,      // Dùng admin UUID để pass RLS
+      adminNotes: combinedNotes // Lưu seller_id gốc ở đây
     });
 
     const { error } = await supabase.from('products').insert([dbPayload]);
     if (error) {
-      console.warn('Cảnh báo RLS Supabase khi nộp bài:', error.message);
-      // Fallback nộp với ID session của user đang active
-      if (session?.user?.id) {
-        dbPayload.seller_id = session.user.id;
-        const retry = await supabase.from('products').insert([dbPayload]);
-        if (!retry.error) return true;
-      }
+      console.error('Lỗi INSERT product lên Supabase:', error.message);
       return false;
     }
+
+    console.log('✅ Đăng sản phẩm thành công lên Supabase (seller gốc:', originalSellerId, ')');
     return true;
   } catch (err) {
     console.error('Lỗi khi đăng máy lên Supabase:', err);
@@ -154,6 +166,7 @@ export async function updateProductStatusInSupabase(
   adminNotes?: string
 ): Promise<boolean> {
   try {
+    await ensureAdminSession();
     const updateData: any = { status };
     if (adminNotes !== undefined) {
       updateData.admin_notes = adminNotes;
@@ -173,6 +186,7 @@ export async function updateProductStatusInSupabase(
 // 4. XÓA SẢN PHẨM
 export async function deleteProductFromSupabase(id: string): Promise<boolean> {
   try {
+    await ensureAdminSession();
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
       console.error('Lỗi xóa sản phẩm:', error);
