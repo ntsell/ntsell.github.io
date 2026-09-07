@@ -110,11 +110,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         });
         return false;
       }
+      try {
+        localStorage.setItem('ntsell_current_user', JSON.stringify(user));
+      } catch {}
       onLoginSuccess(user);
       onClose();
       return true;
     } catch {
       // Fallback nếu có lỗi
+      try {
+        localStorage.setItem('ntsell_current_user', JSON.stringify(user));
+      } catch {}
       onLoginSuccess(user);
       onClose();
       return true;
@@ -249,11 +255,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const targetAdminEmail = isAdmin1 ? 'admin1@ntsell.edu.vn' : 'admin2@ntsell.edu.vn';
       const expectedClass = isAdmin1 ? '11B10' : '12A1';
 
-      if (trimmedClass !== expectedClass) {
-        setErrorMessage(`Sai lớp học dành cho ${isAdmin1 ? 'Admin 1' : 'Admin 2'} (yêu cầu: ${expectedClass})!`);
-        return;
-      }
-
       setIsLoading(true);
       try {
         // Đăng nhập thật vào Supabase Auth với session bảo mật
@@ -332,11 +333,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         if (!studentInAnyClass) {
           setErrorMessage('Không tìm thấy tài khoản học sinh tương ứng với tên này!');
-          return;
-        }
-
-        if (studentInAnyClass.className.toUpperCase().trim() !== trimmedClass) {
-          setErrorMessage(`Sai thông tin lớp học! Học sinh ${studentInAnyClass.realName} thuộc lớp ${studentInAnyClass.className}.`);
           return;
         }
 
@@ -708,60 +704,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Tên Thật */}
+              {/* Tên Đăng Nhập / Họ Tên */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Họ và Tên Thật *
+                  {authMode === 'login' ? 'Tên Đăng Nhập / Họ và Tên *' : 'Họ và Tên Thật *'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Nguyễn Văn An"
+                  placeholder={authMode === 'login' ? 'Nhập tên tài khoản hoặc họ tên...' : 'Ví dụ: Nguyễn Văn An'}
                   value={realName}
                   onChange={(e) => setRealName(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
                 />
               </div>
 
-              {/* Lớp Học & Bộ Lọc Nhanh Khối */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Lớp Học *
-                  </label>
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
-                    {(['ALL', '10', '11', '12'] as const).map(g => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => {
-                          setSelectedGrade(g);
-                          if (g === '10') setClassName('10C1');
-                          else if (g === '11') setClassName('11B1');
-                          else if (g === '12') setClassName('12A1');
-                        }}
-                        className={`px-2 py-0.5 rounded-md transition ${
-                          selectedGrade === g
-                            ? 'bg-blue-600 text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                        }`}
-                      >
-                        {g === 'ALL' ? 'Tất cả' : `Khối ${g}`}
-                      </button>
-                    ))}
+              {/* Lớp Học & Bộ Lọc Nhanh Khối (Chỉ cần khi ĐĂNG KÝ để đối chiếu danh sách trường) */}
+              {authMode === 'register' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Lớp Học *
+                    </label>
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
+                      {(['ALL', '10', '11', '12'] as const).map(g => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            setSelectedGrade(g);
+                            if (g === '10') setClassName('10C1');
+                            else if (g === '11') setClassName('11B1');
+                            else if (g === '12') setClassName('12A1');
+                          }}
+                          className={`px-2 py-0.5 rounded-md transition ${
+                            selectedGrade === g
+                              ? 'bg-blue-600 text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                          }`}
+                        >
+                          {g === 'ALL' ? 'Tất cả' : `Khối ${g}`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <select
-                  value={className}
-                  onChange={(e) => setClassName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-medium"
-                >
-                  {filteredClasses.map(c => (
-                    <option key={c} value={c}>Lớp {c}</option>
-                  ))}
-                </select>
-              </div>
+                  <select
+                    value={className}
+                    onChange={(e) => setClassName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-medium"
+                  >
+                    {filteredClasses.map(c => (
+                      <option key={c} value={c}>Lớp {c}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* ĐĂNG KÝ: Trường Email cá nhân */}
               {authMode === 'register' && (

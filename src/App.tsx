@@ -867,7 +867,12 @@ export function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         roster={INITIAL_ROSTER}
-        onLoginSuccess={(user) => setCurrentUser(user)}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          try {
+            localStorage.setItem('ntsell_current_user', JSON.stringify(user));
+          } catch {}
+        }}
       />
 
       {/* Footer */}
