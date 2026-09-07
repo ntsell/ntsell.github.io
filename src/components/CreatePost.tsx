@@ -22,6 +22,7 @@ import {
 import { Product, ProductCondition } from '../types';
 import { GENUINE_SERIAL_NUMBERS } from '../services/mockData';
 import { encryptSensitiveData } from '../services/cryptoService';
+import { moderatePostContent } from '../services/geminiModeration';
 
 interface CreatePostProps {
   onSuccess: (newProduct: Product) => void;
@@ -166,7 +167,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
   };
 
   // Xử lý gửi bài đăng
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -200,6 +201,24 @@ export const CreatePost: React.FC<CreatePostProps> = ({
     const actualModel = selectedModel === 'Khác (Nhập tùy chỉnh)' 
       ? (customModel.trim() || 'Máy tính học sinh')
       : selectedModel;
+
+    // 1. Kiểm tra thẩm định an toàn nội dung với Gemini Flash Lite AI
+    try {
+      const modRes = await moderatePostContent(
+        productName.trim(),
+        description.trim(),
+        numPrice,
+        actualModel
+      );
+
+      if (!modRes.isValid) {
+        setIsSubmitting(false);
+        setErrorMsg(`AI Phát hiện vi phạm: ${modRes.reason} ${modRes.suggestion ? `(${modRes.suggestion})` : ''}`);
+        return;
+      }
+    } catch {
+      // Bỏ qua lỗi mạng nếu AI kiểm tra không thể kết nối
+    }
 
     const rawSN = serialNumber.trim().toUpperCase();
     const snStatus = checkSNResult ? checkSNResult.status : (rawSN ? 'unverified' : 'unverified');
