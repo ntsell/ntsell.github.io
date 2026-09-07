@@ -6,18 +6,13 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-// API Key cấu hình từ biến môi trường VITE_GEMINI_API_KEY hoặc fallback giải mã an toàn
-const getActiveGeminiKey = (customKey?: string) => {
+// API Key chỉ đọc từ biến môi trường VITE_GEMINI_API_KEY (hoặc do user truyền vào), tuyệt đối không để lộ trong source code
+const getActiveGeminiKey = (customKey?: string): string => {
   if (customKey) return customKey;
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) {
     return import.meta.env.VITE_GEMINI_API_KEY;
   }
-  // Fallback an toàn chống crawler
-  try {
-    return atob('QVEuQWI4Uk42SUdFcVJRVDFFenJCcmhWWVpKazlhb1dadlphOEdwZXduLTNFUEVaVHZMTmc=');
-  } catch {
-    return '';
-  }
+  return '';
 };
 
 // Danh sách từ khóa cấm cục bộ (offline / fallback guardrail)
