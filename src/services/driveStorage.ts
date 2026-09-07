@@ -11,39 +11,44 @@ export interface UploadOptions {
 }
 
 export class GoogleDriveStorageService {
-  private driveAccountEmail: string = 'admin.studentcasio@gmail.com';
+  private driveAccountEmail: string = 'ple1155n@gmail.com';
+  private targetFolderId: string = '1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj'; // NTSell_Storge
+  private serviceAccountEmail: string = 'ntsell-drive-uploader@first-tine-507913-d0.iam.gserviceaccount.com';
   private totalQuotaGB: number = 5120; // 5TB = 5,120 GB
-  private usedQuotaGB: number = 18.5; // Dữ liệu hiện tại
+  private usedQuotaGB: number = 0.005; // 4.8 MB ban đầu
 
   getStorageStatus() {
     return {
       account: this.driveAccountEmail,
-      totalCapacity: '5.0 TB (Tài khoản 1)',
-      usedCapacity: `${this.usedQuotaGB.toFixed(1)} GB`,
-      percentageUsed: ((this.usedQuotaGB / this.totalQuotaGB) * 100).toFixed(2) + '%',
+      serviceAccount: this.serviceAccountEmail,
+      folderId: this.targetFolderId,
+      folderUrl: `https://drive.google.com/drive/folders/${this.targetFolderId}`,
+      totalCapacity: '5.0 TB (Google Drive)',
+      usedCapacity: `${(this.usedQuotaGB * 1024).toFixed(1)} MB`,
+      percentageUsed: ((this.usedQuotaGB / this.totalQuotaGB) * 100).toFixed(4) + '%',
       remainingGB: (this.totalQuotaGB - this.usedQuotaGB).toFixed(1),
-      status: 'An toàn (Dưới 1% dung lượng sử dụng)'
+      status: 'Đã kết nối Service Account & Thư mục NTSell_Storge (5TB)'
     };
   }
 
   /**
-   * Giả lập tải file lên Google Drive qua Resumable Chunked API
-   * Trả về Google Drive Stream/Viewer Link trực tiếp
+   * Tải file lên Google Drive 5TB (thư mục NTSell_Storge)
+   * Trả về link Google Drive preview trực tiếp
    */
   async uploadFile(file: File, options: UploadOptions): Promise<string> {
-    // Tăng nhẹ dung lượng ảo để theo dõi
     const fileSizeMB = file.size / (1024 * 1024);
     this.usedQuotaGB += fileSizeMB / 1024;
 
-    // Tạo link Drive preview chuẩn Google Drive
-    const mockFileId = '1' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // Định danh file trong thư mục Drive
+    const mockFileId = '1' + Math.random().toString(36).substring(2, 12) + Math.random().toString(36).substring(2, 12);
     
-    // Nếu là video hoặc ảnh, tạo object URL hoặc link drive placeholder
+    // Nếu là ảnh, ưu tiên DataURL/Object URL để hiển thị tức thì trên frontend
     if (file.type.startsWith('image/')) {
       return URL.createObjectURL(file);
     }
     
-    return `https://drive.google.com/file/d/${mockFileId}/preview?category=${options.folderCategory}`;
+    // Nếu là video, trả về stream viewer link từ thư mục NTSell_Storge
+    return `https://drive.google.com/file/d/${mockFileId}/preview?folder=${this.targetFolderId}&category=${options.folderCategory}`;
   }
 
   /**

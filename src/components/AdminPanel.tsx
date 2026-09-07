@@ -814,14 +814,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div>
               <span className="text-slate-500 block">Tài khoản chính:</span>
               <span className="font-bold text-slate-800">{driveStatus.account}</span>
+              <a 
+                href={driveStatus.folderUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-[11px] text-blue-600 hover:underline font-semibold block mt-0.5"
+              >
+                📁 Mở Thư Mục NTSell_Storge &rarr;
+              </a>
             </div>
             <div>
               <span className="text-slate-500 block">Dung lượng:</span>
               <span className="font-bold text-indigo-600">{driveStatus.usedCapacity} / {driveStatus.totalCapacity}</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Tỷ lệ: {driveStatus.percentageUsed}</span>
             </div>
             <div>
-              <span className="text-slate-500 block">Trạng thái:</span>
+              <span className="text-slate-500 block">Trạng thái kết nối:</span>
               <span className="font-bold text-emerald-600">{driveStatus.status}</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5 font-mono truncate" title={driveStatus.serviceAccount}>
+                Key: {driveStatus.serviceAccount.split('@')[0]}
+              </span>
             </div>
           </div>
 
