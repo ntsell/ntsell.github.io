@@ -177,14 +177,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Helper gửi OTP (mô phỏng gửi về email của user)
-  const sendOtpToEmail = (targetEmail: string, student: StudentRosterItem) => {
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(randomOtp);
+  // Helper gửi OTP thật qua Supabase Auth Email OTP
+  const sendOtpToEmail = async (targetEmail: string, student: StudentRosterItem) => {
+    setIsLoading(true);
+    setErrorMessage('');
     setUserEnteredOtp('');
-    setOtpNotice(`Mã OTP đã được gửi tới email ${targetEmail}! (Mã bảo mật thử nghiệm: ${randomOtp})`);
     setSelectedStudent(student);
-    setStep('otp_password');
+
+    try {
+      // Gọi Supabase Auth để gửi mã OTP 6 số về email thật của học sinh
+      const { error } = await supabase.auth.signInWithOtp({
+        email: targetEmail,
+        options: {
+          shouldCreateUser: true
+        }
+      });
+
+      setIsLoading(false);
+
+      if (error) {
+        // Nếu dính rate limit hoặc cấu hình SMTP Supabase, thông báo rõ ràng kèm fallback
+        console.warn('Lỗi Supabase signInWithOtp:', error.message);
+        if (error.message.includes('rate limit') || error.message.includes('security purposes')) {
+          setErrorMessage('Email đã được gửi gần đây. Vui lòng kiểm tra hộp thư (cả mục Spam) hoặc đợi 60 giây.');
+        } else {
+          setErrorMessage('Lỗi gửi email: ' + error.message);
+        }
+        // Cho phép người dùng chuyển tới bước nhập OTP để kiểm tra hộp thư
+        setOtpNotice(`Đang gửi mã xác minh tới ${targetEmail}. Vui lòng kiểm tra Hộp thư đến hoặc mục Spam.`);
+        setStep('otp_password');
+      } else {
+        setOtpNotice(`Mã OTP xác thực gồm 6 chữ số đã được gửi tới email ${targetEmail}! Vui lòng kiểm tra hộp thư đến (Inbox) hoặc Thư rác (Spam).`);
+        setStep('otp_password');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage('Không thể kết nối dịch vụ gửi email: ' + (err?.message || 'Vui lòng thử lại.'));
+      setStep('otp_password');
+    }
   };
 
   // =========================================================================
@@ -429,11 +459,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    if (userEnteredOtp.trim() !== generatedOtp.trim()) {
-      setErrorMessage('Mã OTP không chính xác. Vui lòng kiểm tra lại!');
-      return;
-    }
-
     if (!password.trim()) {
       setErrorMessage('Vui lòng nhập mật khẩu bạn muốn tạo.');
       return;
@@ -463,40 +488,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    // Xác minh mã OTP thật với Supabase Auth
+    let authUserId = 'usr_' + Date.now();
+    try {
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: userEnteredOtp.trim(),
+        type: 'email'
+      });
+
+      if (verifyError) {
+        // Thử type 'signup' nếu type 'email' không khớp
+        const { data: signupData, error: signupError } = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: userEnteredOtp.trim(),
+          type: 'signup'
+        });
+
+        if (signupError) {
+          setIsLoading(false);
+          setErrorMessage('Mã OTP không chính xác hoặc đã hết hạn. Chi tiết: ' + signupError.message);
+          return;
+        } else if (signupData?.user) {
+          authUserId = signupData.user.id;
+          // Cập nhật mật khẩu cho tài khoản vừa verify
+          await supabase.auth.updateUser({ password: password.trim() });
+        }
+      } else if (verifyData?.user) {
+        authUserId = verifyData.user.id;
+        // Cập nhật mật khẩu cho tài khoản vừa verify
+        await supabase.auth.updateUser({ password: password.trim() });
+      }
+
+      // Upsert profile vào database
+      await supabase.from('profiles').upsert({
+        id: authUserId,
+        role: 'student',
+        display_name: chosenDisplayName,
+        email: email.trim()
+      });
+    } catch (err: any) {
+      console.warn('Lỗi xác thực OTP qua Supabase:', err);
+    }
+
     // Mã hóa dữ liệu PII
     const finalRealName = selectedStudent?.realName || realName;
     const finalClass = selectedStudent?.className || className;
-
-    let authUserId = 'usr_' + Date.now();
-    try {
-      // Đăng ký tài khoản Supabase Auth thật
-      const signUpRes = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password.trim()
-      });
-
-      if (signUpRes.data?.user) {
-        authUserId = signUpRes.data.user.id;
-        await supabase.from('profiles').upsert({
-          id: authUserId,
-          role: 'student',
-          display_name: chosenDisplayName,
-          email: email.trim()
-        });
-      } else {
-        // Thử đăng nhập nếu tài khoản đã tồn tại
-        const signInRes = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password.trim()
-        });
-        if (signInRes.data?.user) {
-          authUserId = signInRes.data.user.id;
-        }
-      }
-    } catch (err) {
-      console.warn('Lỗi Supabase Auth đăng ký:', err);
-    }
-
     const encRealName = await encryptSensitiveData(finalRealName);
     const encClass = await encryptSensitiveData(finalClass);
     const encUsername = await encryptSensitiveData(generateUsernameFromRealName(finalRealName));
