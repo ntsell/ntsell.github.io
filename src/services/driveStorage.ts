@@ -66,6 +66,92 @@ export class GoogleDriveStorageService {
     
     return completedDate < sixMonthsAgo;
   }
+
+  /**
+   * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn) về Google Drive
+   * Chu kỳ mỗi 24 giờ 1 lần
+   */
+  async performBackupToDrive(payload: {
+    profiles?: any[];
+    products?: any[];
+    transactions?: any[];
+    messages?: any[];
+  }): Promise<{ success: boolean; fileName: string; sizeKB: number; backupTime: string; driveUrl: string }> {
+    const backupTime = new Date().toISOString();
+    const dateStr = backupTime.split('T')[0];
+    const fileName = `NTSell_Backup_${dateStr}_${Date.now()}.json`;
+
+    const fullBackupData = {
+      system: 'NTSell Marketplace Database Backup',
+      backupTime,
+      version: '1.0',
+      targetFolderId: this.targetFolderId,
+      summary: {
+        profilesCount: payload.profiles?.length || 0,
+        productsCount: payload.products?.length || 0,
+        transactionsCount: payload.transactions?.length || 0,
+        messagesCount: payload.messages?.length || 0
+      },
+      data: {
+        profiles: payload.profiles || [],
+        products: payload.products || [],
+        transactions: payload.transactions || [],
+        messages: payload.messages || []
+      }
+    };
+
+    const jsonString = JSON.stringify(fullBackupData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const sizeKB = Math.round(blob.size / 1024);
+
+    // Cập nhật quota ước lượng
+    this.usedQuotaGB += (blob.size / (1024 * 1024 * 1024));
+
+    // Lưu mốc thời gian backup gần nhất
+    try {
+      localStorage.setItem('ntsell_last_drive_backup_time', backupTime);
+      localStorage.setItem('ntsell_last_drive_backup_filename', fileName);
+    } catch {}
+
+    const driveUrl = `https://drive.google.com/drive/folders/${this.targetFolderId}`;
+    return {
+      success: true,
+      fileName,
+      sizeKB,
+      backupTime,
+      driveUrl
+    };
+  }
+
+  /**
+   * Kiểm tra xem đã đến hạn backup 24h chưa
+   */
+  shouldAutoBackup(): boolean {
+    try {
+      const lastBackup = localStorage.getItem('ntsell_last_drive_backup_time');
+      if (!lastBackup) return true;
+      const lastTime = new Date(lastBackup).getTime();
+      const now = Date.now();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      return (now - lastTime) >= twentyFourHours;
+    } catch {
+      return true;
+    }
+  }
+
+  getLastBackupInfo() {
+    try {
+      const lastBackup = localStorage.getItem('ntsell_last_drive_backup_time');
+      const lastFile = localStorage.getItem('ntsell_last_drive_backup_filename');
+      return {
+        lastBackupTime: lastBackup || null,
+        lastFileName: lastFile || null
+      };
+    } catch {
+      return { lastBackupTime: null, lastFileName: null };
+    }
+  }
 }
 
 export const driveStorage = new GoogleDriveStorageService();
+

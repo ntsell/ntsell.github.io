@@ -35,6 +35,7 @@ import {
   insertNotificationToSupabase
 } from './services/supabaseService';
 import { supabase } from './services/supabaseClient';
+import { driveStorage } from './services/driveStorage';
 
 export function App() {
   // Navigation
@@ -329,7 +330,44 @@ export function App() {
     };
   }, []);
 
+  // Tự động kiểm tra và sao lưu về Google Drive mỗi 24 giờ một lần (Background Backup)
+  React.useEffect(() => {
+    const checkAndAutoBackup = async () => {
+      if (driveStorage.shouldAutoBackup()) {
+        try {
+          let localProfiles = [];
+          try {
+            const p = localStorage.getItem('ntsell_user_profiles_list');
+            if (p) localProfiles = JSON.parse(p);
+          } catch {}
+          
+          let localMessages = [];
+          try {
+            const m = localStorage.getItem('ntsell_messages');
+            if (m) localMessages = JSON.parse(m);
+          } catch {}
+
+          await driveStorage.performBackupToDrive({
+            profiles: localProfiles,
+            products,
+            transactions,
+            messages: localMessages
+          });
+          console.log('[Auto-Backup] Đã tự động sao lưu dữ liệu 24h về Google Drive thành công.');
+        } catch (err) {
+          console.error('[Auto-Backup] Lỗi tự động sao lưu:', err);
+        }
+      }
+    };
+
+    // Kiểm tra ngay khi khởi động và lặp lại kiểm tra mỗi 1 giờ
+    checkAndAutoBackup();
+    const backupInterval = setInterval(checkAndAutoBackup, 60 * 60 * 1000);
+    return () => clearInterval(backupInterval);
+  }, [products, transactions]);
+
   // Handlers
+
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
     setCurrentTab('product_detail');

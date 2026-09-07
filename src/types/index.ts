@@ -182,4 +182,13 @@ export interface UserSession {
   isActive: boolean;
 }
 
+export interface BroadcastAnnouncement {
+  id: string;
+  message: string;
+  durationSeconds: number; // Mặc định 10s
+  createdAt: string;
+  isActive: boolean;
+}
+
+
 

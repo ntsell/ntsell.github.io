@@ -302,3 +302,96 @@ export async function insertVerificationRequestToSupabase(req: VerificationReque
     return false;
   }
 }
+
+// 8. QUẢN LÝ TÀI KHOẢN (PROFILES MANAGEMENT CHO ADMIN)
+export async function fetchProfilesFromSupabase(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteProfileFromSupabase(userId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// 9. THÔNG BÁO TOÀN WEB (BROADCAST ANNOUNCEMENT)
+export async function fetchActiveBroadcastFromSupabase(): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('broadcast_announcements')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      // Fallback local storage
+      const local = localStorage.getItem('ntsell_active_announcement');
+      return local ? JSON.parse(local) : null;
+    }
+    return {
+      id: data[0].id,
+      message: data[0].message,
+      durationSeconds: data[0].duration_seconds || 10,
+      createdAt: data[0].created_at,
+      isActive: data[0].is_active
+    };
+  } catch {
+    const local = localStorage.getItem('ntsell_active_announcement');
+    return local ? JSON.parse(local) : null;
+  }
+}
+
+export async function publishBroadcastToSupabase(announcement: {
+  id: string;
+  message: string;
+  durationSeconds: number;
+}): Promise<boolean> {
+  try {
+    // Tắt các thông báo cũ
+    await supabase.from('broadcast_announcements').update({ is_active: false }).eq('is_active', true);
+
+    const { error } = await supabase.from('broadcast_announcements').insert([{
+      id: announcement.id,
+      message: announcement.message,
+      duration_seconds: announcement.durationSeconds,
+      is_active: true,
+      created_at: new Date().toISOString()
+    }]);
+
+    // Đồng bộ LocalStorage & BroadcastChannel
+    localStorage.setItem('ntsell_active_announcement', JSON.stringify({
+      ...announcement,
+      createdAt: new Date().toISOString(),
+      isActive: true
+    }));
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('ntsell_announcement_channel');
+      bc.postMessage({ type: 'NEW_ANNOUNCEMENT', payload: announcement });
+      bc.close();
+    }
+
+    return !error;
+  } catch {
+    localStorage.setItem('ntsell_active_announcement', JSON.stringify({
+      ...announcement,
+      createdAt: new Date().toISOString(),
+      isActive: true
+    }));
+    return true;
+  }
+}
+

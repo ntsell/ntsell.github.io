@@ -29,6 +29,9 @@ import { Product, Transaction, Dispute, VerificationRequest, UserProfile } from 
 import { driveStorage } from '../services/driveStorage';
 import { runAutoDeleteVideosJob } from '../services/autoDeleteWorker';
 import { AdminSessions } from './AdminSessions';
+import { AdminUsersManagement } from './AdminUsersManagement';
+import { publishBroadcastToSupabase } from '../services/supabaseService';
+import { Megaphone, Send, Database } from 'lucide-react';
 
 interface AdminPanelProps {
   products: Product[];
@@ -53,11 +56,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onResolveDispute,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster' | 'sessions'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster' | 'sessions' | 'users' | 'broadcast'>('products');
+  
+  // State Thông Báo Toàn Web (Broadcast)
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastDuration, setBroadcastDuration] = useState(10);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastSuccess, setBroadcastSuccess] = useState(false);
+
+  // State Sao Lưu Dữ Liệu 24h về Google Drive
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [lastBackupInfo, setLastBackupInfo] = useState(() => driveStorage.getLastBackupInfo());
+  const [backupResult, setBackupResult] = useState<any>(null);
+
   const [cronResult, setCronResult] = useState<any>(null);
   const [isCronRunning, setIsCronRunning] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [rejectProduct, setRejectProduct] = useState<Product | null>(null);
+
   const [rejectReason, setRejectReason] = useState('');
   const [requestEditProduct, setRequestEditProduct] = useState<Product | null>(null);
   const [requestEditReason, setRequestEditReason] = useState('');
@@ -222,6 +238,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('users')}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === 'users' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          Quản Lý Tài Khoản
+        </button>
+
+        <button
+          onClick={() => setActiveTab('broadcast')}
+          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === 'broadcast' ? 'border-amber-600 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Megaphone className="w-3.5 h-3.5" />
+          Thông Báo Toàn Web
+        </button>
+
+        <button
           onClick={() => setActiveTab('sessions')}
           className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
             activeTab === 'sessions' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -231,6 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           Quản Lý Phiên Thiết Bị (Sessions)
         </button>
       </div>
+
 
       {/* Content 1: Duyệt bài đăng */}
       {activeTab === 'products' && (
@@ -866,8 +903,101 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
+
+          {/* Sao Lưu Dữ Liệu Tự Động Mỗi 24H Về Google Drive */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-blue-50/80 border border-emerald-200/80 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    Tự Động Sao Lưu Dữ Liệu Về Google Drive (Chu Kỳ Mỗi 24 Giờ)
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Đang Kích Hoạt
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Các dữ liệu được sao lưu định kỳ: <strong>Danh sách tài khoản</strong>, <strong>mặt hàng đang treo</strong>, <strong>lịch sử mua hàng</strong>, và <strong>tin nhắn trao đổi</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  setIsBackingUp(true);
+                  try {
+                    let localProfiles = [];
+                    try {
+                      const p = localStorage.getItem('ntsell_user_profiles_list');
+                      if (p) localProfiles = JSON.parse(p);
+                    } catch {}
+                    
+                    let localMessages = [];
+                    try {
+                      const m = localStorage.getItem('ntsell_messages');
+                      if (m) localMessages = JSON.parse(m);
+                    } catch {}
+
+                    const res = await driveStorage.performBackupToDrive({
+                      profiles: localProfiles,
+                      products: products,
+                      transactions: transactions,
+                      messages: localMessages
+                    });
+                    setBackupResult(res);
+                    setLastBackupInfo(driveStorage.getLastBackupInfo());
+                    alert(`✅ Sao lưu thành công về Google Drive!\nTên file: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nĐã lưu vào thư mục NTSell_Storge.`);
+                  } catch (err: any) {
+                    alert('Lỗi sao lưu: ' + err?.message);
+                  } finally {
+                    setIsBackingUp(false);
+                  }
+                }}
+                disabled={isBackingUp}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
+                {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Ngay Lập Tức'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/90 p-3.5 rounded-xl border border-emerald-100">
+              <div>
+                <span className="text-slate-400 block text-[11px]">Lần sao lưu gần nhất:</span>
+                <span className="font-bold text-slate-800">
+                  {lastBackupInfo.lastBackupTime ? new Date(lastBackupInfo.lastBackupTime).toLocaleString('vi-VN') : 'Chưa có bản lưu'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Tệp sao lưu mới nhất:</span>
+                <span className="font-mono text-emerald-700 font-bold truncate block" title={lastBackupInfo.lastFileName || ''}>
+                  {lastBackupInfo.lastFileName || 'Chưa tạo tệp'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Thư mục Drive đích:</span>
+                <a 
+                  href={driveStatus.folderUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  NTSell_Storge (5TB) &rarr;
+                </a>
+              </div>
+            </div>
+
+            {backupResult && (
+              <div className="p-3 bg-emerald-100/60 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-mono">
+                [OK] Đã hoàn tất đóng gói và đưa vào thư mục Drive: {backupResult.fileName} ({backupResult.sizeKB} KB) lúc {new Date(backupResult.backupTime).toLocaleTimeString('vi-VN')}.
+              </div>
+            )}
+          </div>
         </div>
       )}
+
 
       {/* Content 4: Quản lý yêu cầu xác minh tài khoản học sinh (Request Admin Verification) */}
       {activeTab === 'roster' && (
@@ -990,6 +1120,109 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeTab === 'sessions' && (
         <AdminSessions />
       )}
+
+      {/* Content 7: Quản lý Danh Sách Tài Khoản trên web */}
+      {activeTab === 'users' && (
+        <AdminUsersManagement />
+      )}
+
+      {/* Content 8: Công cụ Phát Thông Báo Toàn Web */}
+      {activeTab === 'broadcast' && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6 shadow-xs">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-amber-500" />
+              Công Cụ Phát Thông Báo Toàn Web (Broadcast Announcement)
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Khi phát, một chấm tròn sẽ xuất hiện ở giữa thanh điều hướng Navbar của người dùng, sau đó mở rộng sang 2 bên và hiển thị nội dung thông báo.
+            </p>
+          </div>
+
+          <div className="space-y-4 max-w-2xl">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Nội dung thông báo phát toàn web:</label>
+              <textarea
+                value={broadcastText}
+                onChange={(e) => setBroadcastText(e.target.value)}
+                placeholder="Ví dụ: Lưu ý: Ban Quản Trị đã cập nhật tính năng bảo vệ giao dịch mới. Chúc các bạn một ngày học tập tốt lành!"
+                rows={4}
+                className="w-full text-xs p-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span>Thời gian hiển thị (Giây):</span>
+                <span className="text-indigo-600 font-extrabold">{broadcastDuration} giây (Mặc định: 10s)</span>
+              </label>
+              <input
+                type="range"
+                min="5"
+                max="60"
+                step="5"
+                value={broadcastDuration}
+                onChange={(e) => setBroadcastDuration(Number(e.target.value))}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400">
+                <span>5 giây</span>
+                <span>10 giây (khuyên dùng)</span>
+                <span>30 giây</span>
+                <span>60 giây</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  if (!broadcastText.trim()) {
+                    alert('Vui lòng nhập nội dung thông báo!');
+                    return;
+                  }
+                  setIsBroadcasting(true);
+                  try {
+                    await publishBroadcastToSupabase({
+                      id: 'bc_' + Date.now(),
+                      message: broadcastText.trim(),
+                      durationSeconds: broadcastDuration
+                    });
+                    setBroadcastSuccess(true);
+                    setTimeout(() => setBroadcastSuccess(false), 4000);
+                  } finally {
+                    setIsBroadcasting(false);
+                  }
+                }}
+                disabled={isBroadcasting}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/25 flex items-center gap-2 transition disabled:opacity-50"
+              >
+                <Send className={`w-4 h-4 ${isBroadcasting ? 'animate-pulse' : ''}`} />
+                {isBroadcasting ? 'Đang phát...' : 'Phát Thông Báo Ngay'}
+              </button>
+
+              {broadcastSuccess && (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Đã phát thông báo thành công tới tất cả người dùng!
+                </span>
+              )}
+            </div>
+
+            <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 text-xs text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                Cơ chế hoạt động:
+              </p>
+              <p className="text-slate-600 text-[11px] leading-relaxed">
+                1. Hệ thống gửi thông điệp qua Supabase Realtime Postgres Changes & BroadcastChannel.<br />
+                2. Màn hình của tất cả người dùng đang mở web sẽ thấy chấm tròn xuất hiện ở đoạn giữa trên thanh Navbar (như ảnh bạn chụp).<br />
+                3. Chấm tròn nở to sang 2 bên và giữ lại đúng {broadcastDuration} giây trước khi tự động thu hẹp và biến mất.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

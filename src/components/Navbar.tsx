@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { UserProfile, AppNotification } from '../types';
+import { BroadcastDotBanner } from './BroadcastDotBanner';
 
 interface NavbarProps {
   currentTab: string;
@@ -383,6 +384,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               );
             })}
           </nav>
+
+          {/* Chấm tròn thông báo toàn web mở rộng sang 2 bên (Broadcast Dot Announcement) */}
+          <div className="flex-1 max-w-[420px] mx-2 hidden lg:flex items-center justify-center">
+            <BroadcastDotBanner />
+          </div>
 
           {/* Action buttons & User profile */}
           <div className="flex items-center gap-2 sm:gap-3">
