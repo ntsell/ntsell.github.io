@@ -173,13 +173,20 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
 
           {/* Cụm Action Buttons */}
           <div className="space-y-3 pt-4 border-t border-slate-100">
-            <button
-              onClick={() => onStartChat(product)}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition shadow-md shadow-blue-600/20 flex items-center justify-center gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Nhắn Tin Thương Lượng & Hẹn Gặp
-            </button>
+            {currentUser && (currentUser.id === product.sellerId || (currentUser.displayName && currentUser.displayName === product.sellerDisplayName)) ? (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold text-center flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                Đây là bài đăng máy tính của chính bạn
+              </div>
+            ) : (
+              <button
+                onClick={() => onStartChat(product)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition shadow-md shadow-blue-600/20 flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Nhắn Tin Thương Lượng & Hẹn Gặp
+              </button>
+            )}
 
             <button
               onClick={onOpenVideoGuide}
