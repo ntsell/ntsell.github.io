@@ -19,6 +19,19 @@ import {
   CURRENT_USER_MOCK 
 } from './services/mockData';
 import { Product, Transaction, Dispute, ChatMessage, Conversation, UserProfile, AppNotification } from './types';
+import { 
+  fetchProductsFromSupabase, 
+  insertProductToSupabase, 
+  updateProductStatusInSupabase, 
+  deleteProductFromSupabase,
+  fetchConversationsFromSupabase,
+  upsertConversationToSupabase,
+  fetchMessagesFromSupabase,
+  insertMessageToSupabase,
+  fetchNotificationsFromSupabase,
+  insertNotificationToSupabase
+} from './services/supabaseService';
+import { supabase } from './services/supabaseClient';
 
 export function App() {
   // Navigation
@@ -156,81 +169,41 @@ export function App() {
     });
   };
 
-  // Tải ban đầu từ local API /api/products, /api/messages, /api/notifications
+  // Tải ban đầu từ Supabase Database (Đồng bộ trực tuyến giữa mọi thiết bị)
   React.useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setProducts(data);
-          localStorage.setItem('ntsell_products', JSON.stringify(data));
-        } else {
-          const localSaved = localStorage.getItem('ntsell_products');
-          if (localSaved) {
-            try {
-              const parsed = JSON.parse(localSaved);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setProducts(parsed);
-                fetch('/api/products', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(parsed)
-                }).catch(() => {});
-              }
-            } catch {}
-          }
-        }
-      })
-      .catch(() => {});
+    // 1. Tải danh sách sản phẩm từ Supabase
+    fetchProductsFromSupabase().then(dbProds => {
+      if (Array.isArray(dbProds) && dbProds.length > 0) {
+        setProducts(dbProds);
+        localStorage.setItem('ntsell_products', JSON.stringify(dbProds));
+      }
+    });
 
-    // Đồng bộ tin nhắn từ máy chủ dùng chung
-    fetch('/api/messages')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setMessages(data);
-          localStorage.setItem('ntsell_messages', JSON.stringify(data));
-        }
-      })
-      .catch(() => {});
+    // 2. Tải tin nhắn và cuộc trò chuyện
+    fetchConversationsFromSupabase().then(dbConvs => {
+      if (Array.isArray(dbConvs) && dbConvs.length > 0) {
+        setConversations(dbConvs);
+        localStorage.setItem('ntsell_conversations', JSON.stringify(dbConvs));
+      }
+    });
 
-    // Đồng bộ cuộc trò chuyện từ máy chủ dùng chung
-    fetch('/api/conversations')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setConversations(data);
-          localStorage.setItem('ntsell_conversations', JSON.stringify(data));
-        } else {
-          const localSaved = localStorage.getItem('ntsell_conversations');
-          if (localSaved) {
-            try {
-              const parsed = JSON.parse(localSaved);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setConversations(parsed);
-                fetch('/api/conversations', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(parsed)
-                }).catch(() => {});
-              }
-            } catch {}
-          }
-        }
-      })
-      .catch(() => {});
+    fetchMessagesFromSupabase().then(dbMsgs => {
+      if (Array.isArray(dbMsgs) && dbMsgs.length > 0) {
+        setMessages(dbMsgs);
+        localStorage.setItem('ntsell_messages', JSON.stringify(dbMsgs));
+      }
+    });
 
-    // Đồng bộ thông báo từ máy chủ dùng chung
-    fetch('/api/notifications')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setNotifications(data);
-          localStorage.setItem('ntsell_notifications', JSON.stringify(data));
+    // 3. Tải thông báo nếu đã đăng nhập
+    if (currentUser?.id) {
+      fetchNotificationsFromSupabase(currentUser.id).then(dbNotifs => {
+        if (Array.isArray(dbNotifs) && dbNotifs.length > 0) {
+          setNotifications(dbNotifs);
+          localStorage.setItem('ntsell_notifications', JSON.stringify(dbNotifs));
         }
-      })
-      .catch(() => {});
-  }, []);
+      });
+    }
+  }, [currentUser?.id]);
 
   // Lắng nghe sự kiện đồng bộ giữa các cửa sổ / tab duyệt web
   React.useEffect(() => {
@@ -277,54 +250,58 @@ export function App() {
       };
     }
 
-    // Polling định kỳ kiểm tra server cho tin nhắn, cuộc trò chuyện & sản phẩm (cửa sổ ẩn danh / incognito)
+    // Lắng nghe trực tiếp từ Supabase Realtime (Cập nhật tức thì 0 giây giữa mọi thiết bị)
+    const realtimeChannel = supabase.channel('ntsell_realtime_db')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, async () => {
+        const freshProds = await fetchProductsFromSupabase();
+        if (Array.isArray(freshProds)) {
+          setProducts(freshProds);
+          localStorage.setItem('ntsell_products', JSON.stringify(freshProds));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, async () => {
+        const freshMsgs = await fetchMessagesFromSupabase();
+        if (Array.isArray(freshMsgs)) {
+          setMessages(freshMsgs);
+          localStorage.setItem('ntsell_messages', JSON.stringify(freshMsgs));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, async () => {
+        const freshConvs = await fetchConversationsFromSupabase();
+        if (Array.isArray(freshConvs)) {
+          setConversations(freshConvs);
+          localStorage.setItem('ntsell_conversations', JSON.stringify(freshConvs));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, async () => {
+        if (currentUser?.id) {
+          const freshNotifs = await fetchNotificationsFromSupabase(currentUser.id);
+          if (Array.isArray(freshNotifs)) {
+            setNotifications(freshNotifs);
+            localStorage.setItem('ntsell_notifications', JSON.stringify(freshNotifs));
+          }
+        }
+      })
+      .subscribe();
+
+    // Polling định kỳ dự phòng mỗi 3 giây
     const pollInterval = setInterval(() => {
-      fetch('/api/products')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setProducts(prev => JSON.stringify(prev) !== JSON.stringify(data) ? data : prev);
-          }
-        })
-        .catch(() => {});
-
-      fetch('/api/conversations')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setConversations(prev => {
-              // Hợp nhất tránh mất cuộc trò chuyện vừa tạo cục bộ
-              if (JSON.stringify(prev) !== JSON.stringify(data)) {
-                return data;
-              }
-              return prev;
-            });
-          }
-        })
-        .catch(() => {});
-
-      fetch('/api/messages')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setMessages(prev => JSON.stringify(prev) !== JSON.stringify(data) ? data : prev);
-          }
-        })
-        .catch(() => {});
-
-      fetch('/api/notifications')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setNotifications(prev => JSON.stringify(prev) !== JSON.stringify(data) ? data : prev);
-          }
-        })
-        .catch(() => {});
-    }, 1500);
+      fetchProductsFromSupabase().then(prods => {
+        if (Array.isArray(prods) && prods.length > 0) {
+          setProducts(prev => JSON.stringify(prev) !== JSON.stringify(prods) ? prods : prev);
+        }
+      });
+      fetchConversationsFromSupabase().then(convs => {
+        if (Array.isArray(convs)) {
+          setConversations(prev => JSON.stringify(prev) !== JSON.stringify(convs) ? convs : prev);
+        }
+      });
+    }, 3000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       if (bc) bc.close();
+      supabase.removeChannel(realtimeChannel);
       clearInterval(pollInterval);
     };
   }, []);
@@ -366,17 +343,13 @@ export function App() {
         bc.postMessage({ type: 'CONVERSATIONS_UPDATED', payload: updatedConvos });
         bc.close();
       }
-      fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedConvos)
-      }).catch(() => {});
+      upsertConversationToSupabase(newConvo);
     }
 
     setCurrentTab('chat');
   };
 
-  const handleCreateProduct = (newProduct: Product) => {
+  const handlePublishProduct = (newProduct: Product) => {
     const updated = [newProduct, ...products];
     setProducts(updated);
     try {
@@ -386,11 +359,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Lưu trực tiếp lên Database Supabase đám mây
+      insertProductToSupabase(newProduct);
 
       // Bắn thông báo tới Admin về yêu cầu đăng bán mới
       sendNotification({
@@ -417,63 +388,31 @@ export function App() {
       messageText: text,
       createdAt: new Date().toISOString()
     };
+    const updatedMsgs = [...messages, newMsg];
+    setMessages(updatedMsgs);
 
-    const updatedMessages = [...messages, newMsg];
-    setMessages(updatedMessages);
-
-    // Cập nhật lastMessage cho cuộc hội thoại & xác định người nhận
-    let recipientId = '';
-    const updatedConvos = conversations.map(c => {
-      if (c.id === conversationId) {
-        recipientId = c.buyerId === currentUser.id ? c.sellerId : c.buyerId;
-        return {
-          ...c,
-          lastMessage: text,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return c;
-    });
-    setConversations(updatedConvos);
+    const updatedConvs = conversations.map(c => 
+      c.id === conversationId ? { ...c, lastMessage: text, updatedAt: new Date().toISOString() } : c
+    );
+    setConversations(updatedConvs);
 
     try {
-      localStorage.setItem('ntsell_messages', JSON.stringify(updatedMessages));
-      localStorage.setItem('ntsell_conversations', JSON.stringify(updatedConvos));
-
+      localStorage.setItem('ntsell_messages', JSON.stringify(updatedMsgs));
+      localStorage.setItem('ntsell_conversations', JSON.stringify(updatedConvs));
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('ntsell_channel');
-        bc.postMessage({ type: 'MESSAGES_UPDATED', payload: updatedMessages });
-        bc.postMessage({ type: 'CONVERSATIONS_UPDATED', payload: updatedConvos });
+        bc.postMessage({ type: 'MESSAGES_UPDATED', payload: updatedMsgs });
+        bc.postMessage({ type: 'CONVERSATIONS_UPDATED', payload: updatedConvs });
         bc.close();
       }
 
-      // Sync lên server realtime
-      fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedMessages)
-      }).catch(() => {});
-
-      fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedConvos)
-      }).catch(() => {});
-
-      // Gửi thông báo có tin nhắn mới cho đối phương
-      if (recipientId) {
-        sendNotification({
-          userId: recipientId,
-          type: 'new_message',
-          title: `Tin nhắn mới từ ${currentUser.displayName}`,
-          message: text.length > 60 ? text.slice(0, 57) + '...' : text,
-          linkTab: 'chat',
-          relatedId: conversationId
-        });
+      // Đồng bộ tin nhắn lên Supabase
+      insertMessageToSupabase(newMsg);
+      const activeConv = updatedConvs.find(c => c.id === conversationId);
+      if (activeConv) {
+        upsertConversationToSupabase(activeConv);
       }
-    } catch (e) {
-      console.error('Lỗi lưu tin nhắn:', e);
-    }
+    } catch {}
   };
 
   const handleUploadProof = (transactionId: string, role: 'buyer' | 'seller', videoUrl: string) => {
@@ -529,11 +468,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Cập nhật lên Supabase Database
+      updateProductStatusInSupabase(id, 'flagged', defaultReason);
 
       if (targetProd) {
         sendNotification({
@@ -561,11 +498,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Duyệt sản phẩm trên Supabase Database
+      updateProductStatusInSupabase(id, 'active');
 
       if (targetProd) {
         sendNotification({
@@ -594,11 +529,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Cập nhật yêu cầu sửa lên Supabase Database
+      updateProductStatusInSupabase(id, 'requires_edit', notes);
 
       if (targetProd) {
         sendNotification({
@@ -627,11 +560,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Cập nhật từ chối lên Supabase Database
+      updateProductStatusInSupabase(id, 'rejected', defaultReason);
 
       if (targetProd) {
         sendNotification({
@@ -658,11 +589,9 @@ export function App() {
         bc.postMessage({ type: 'PRODUCTS_UPDATED', payload: updated });
         bc.close();
       }
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      }).catch(err => console.error('Lỗi sync server:', err));
+
+      // Xóa trên Supabase Database
+      deleteProductFromSupabase(id);
     } catch (err) {
       console.error('Lỗi xóa sản phẩm:', err);
     }
@@ -747,7 +676,7 @@ export function App() {
                     setEditingProduct(null);
                     setCurrentTab('dashboard');
                   } else {
-                    handleCreateProduct(savedProd);
+                    handlePublishProduct(savedProd);
                   }
                 }}
                 onCancel={() => {

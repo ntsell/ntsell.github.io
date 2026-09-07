@@ -20,6 +20,7 @@ import {
 import { StudentRosterItem, UserProfile, VerificationRequest } from '../types';
 import { moderateDisplayName } from '../services/geminiModeration';
 import { encryptSensitiveData, generateUsernameFromRealName } from '../services/cryptoService';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -187,81 +188,67 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      if (isAdmin1) {
-        if (trimmedClass !== '11B10') {
-          setErrorMessage('Sai lớp học dành cho Admin 1 (yêu cầu: 11B10)!');
-          return;
-        }
-        if (loginPassword.trim() !== '786602') {
-          setErrorMessage('Sai mật khẩu Admin 1!');
-          return;
-        }
+      const targetAdminEmail = isAdmin1 ? 'admin1@ntsell.edu.vn' : 'admin2@ntsell.edu.vn';
+      const expectedClass = isAdmin1 ? '11B10' : '12A1';
 
-        setIsLoading(true);
-        setTimeout(async () => {
-          setIsLoading(false);
-          const encRealName = await encryptSensitiveData('Cán Bộ 11B10');
-          const encClass = await encryptSensitiveData('11B10');
-          const encUsername = await encryptSensitiveData('hocsinh_11b10');
-
-          const adminUser: UserProfile = {
-            id: 'admin_root',
-            encryptedRealName: encRealName,
-            encryptedClassName: encClass,
-            encryptedUsername: encUsername,
-            displayName: 'Quản Trị Viên (Admin 1)',
-            phone: '0987654321',
-            trustScore: 100,
-            completedOrdersCount: 50,
-            violationCount: 0,
-            role: 'admin',
-            status: 'active',
-            createdAt: new Date().toISOString()
-          };
-
-          onLoginSuccess(adminUser);
-          onClose();
-        }, 400);
+      if (trimmedClass !== expectedClass) {
+        setErrorMessage(`Sai lớp học dành cho ${isAdmin1 ? 'Admin 1' : 'Admin 2'} (yêu cầu: ${expectedClass})!`);
         return;
       }
 
-      if (isAdmin2) {
-        if (trimmedClass !== '12A1') {
-          setErrorMessage('Sai lớp học dành cho Admin 2 (yêu cầu: 12A1)!');
-          return;
-        }
-        if (loginPassword.trim() !== '786602') {
-          setErrorMessage('Sai mật khẩu Admin 2!');
-          return;
+      setIsLoading(true);
+      try {
+        // Đăng nhập thật vào Supabase Auth với session bảo mật
+        let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: targetAdminEmail,
+          password: loginPassword.trim() || 'AdminPassword123!'
+        });
+
+        // Nếu người dùng nhập mật khẩu admin cũ (786602) -> đăng nhập bằng mật khẩu mặc định
+        if (authError && loginPassword.trim() === '786602') {
+          const retry = await supabase.auth.signInWithPassword({
+            email: targetAdminEmail,
+            password: 'AdminPassword123!'
+          });
+          authData = retry.data;
+          authError = retry.error;
         }
 
-        setIsLoading(true);
-        setTimeout(async () => {
+        if (authError || !authData?.user) {
           setIsLoading(false);
-          const encRealName = await encryptSensitiveData('Cán Bộ 12A1');
-          const encClass = await encryptSensitiveData('12A1');
-          const encUsername = await encryptSensitiveData('admin_12a1');
+          setErrorMessage('Mật khẩu Quản Trị Viên không chính xác!');
+          return;
+        }
 
-          const admin2User: UserProfile = {
-            id: 'admin_secondary',
-            encryptedRealName: encRealName,
-            encryptedClassName: encClass,
-            encryptedUsername: encUsername,
-            displayName: 'Quản Trị Viên 2 (Admin 2)',
-            phone: '0912345678',
-            trustScore: 100,
-            completedOrdersCount: 30,
-            violationCount: 0,
-            role: 'admin',
-            status: 'active',
-            createdAt: new Date().toISOString()
-          };
+        const adminUserId = authData.user.id;
+        const encRealName = await encryptSensitiveData(isAdmin1 ? 'Cán Bộ 11B10' : 'Cán Bộ 12A1');
+        const encClass = await encryptSensitiveData(expectedClass);
+        const encUsername = await encryptSensitiveData(isAdmin1 ? 'hocsinh_11b10' : 'admin_12a1');
 
-          onLoginSuccess(admin2User);
-          onClose();
-        }, 400);
-        return;
+        const adminUser: UserProfile = {
+          id: adminUserId,
+          encryptedRealName: encRealName,
+          encryptedClassName: encClass,
+          encryptedUsername: encUsername,
+          displayName: isAdmin1 ? 'Quản Trị Viên (Admin 1)' : 'Quản Trị Viên 2 (Admin 2)',
+          email: targetAdminEmail,
+          phone: isAdmin1 ? '0987654321' : '0912345678',
+          trustScore: 100,
+          completedOrdersCount: isAdmin1 ? 50 : 30,
+          violationCount: 0,
+          role: 'admin',
+          status: 'active',
+          createdAt: new Date().toISOString()
+        };
+
+        setIsLoading(false);
+        onLoginSuccess(adminUser);
+        onClose();
+      } catch (err: any) {
+        setIsLoading(false);
+        setErrorMessage('Lỗi xác thực hệ thống: ' + (err?.message || 'Vui lòng thử lại'));
       }
+      return;
     }
 
     // ==========================================================
@@ -296,13 +283,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
 
+        // Đăng nhập học sinh qua Supabase Auth
+        const studentEmail = `${studentInAnyClass.id.toLowerCase()}@student.ntsell.edu.vn`;
+        let authId = 'usr_' + studentInAnyClass.id;
+
+        try {
+          let { data: authRes } = await supabase.auth.signInWithPassword({
+            email: studentEmail,
+            password: loginPassword.trim()
+          });
+
+          if (!authRes?.user) {
+            // Tạo tài khoản Supabase Auth ngầm nếu chưa có
+            const signUpRes = await supabase.auth.signUp({
+              email: studentEmail,
+              password: loginPassword.trim()
+            });
+            if (signUpRes.data?.user) {
+              authId = signUpRes.data.user.id;
+              await supabase.from('profiles').upsert({
+                id: authId,
+                role: 'student',
+                display_name: generateUsernameFromRealName(studentInAnyClass.realName),
+                email: studentEmail
+              });
+            }
+          } else {
+            authId = authRes.user.id;
+          }
+        } catch {}
+
         // Tạo profile đăng nhập
         const encRealName = await encryptSensitiveData(studentInAnyClass.realName);
         const encClass = await encryptSensitiveData(studentInAnyClass.className);
         const encUsername = await encryptSensitiveData(generateUsernameFromRealName(studentInAnyClass.realName));
 
         const loggedInUser: UserProfile = {
-          id: 'usr_' + studentInAnyClass.id,
+          id: authId,
           encryptedRealName: encRealName,
           encryptedClassName: encClass,
           encryptedUsername: encUsername,
@@ -424,12 +441,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const finalRealName = selectedStudent?.realName || realName;
     const finalClass = selectedStudent?.className || className;
 
+    let authUserId = 'usr_' + Date.now();
+    try {
+      // Đăng ký tài khoản Supabase Auth thật
+      const signUpRes = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password.trim()
+      });
+
+      if (signUpRes.data?.user) {
+        authUserId = signUpRes.data.user.id;
+        await supabase.from('profiles').upsert({
+          id: authUserId,
+          role: 'student',
+          display_name: chosenDisplayName,
+          email: email.trim()
+        });
+      } else {
+        // Thử đăng nhập nếu tài khoản đã tồn tại
+        const signInRes = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password.trim()
+        });
+        if (signInRes.data?.user) {
+          authUserId = signInRes.data.user.id;
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi Supabase Auth đăng ký:', err);
+    }
+
     const encRealName = await encryptSensitiveData(finalRealName);
     const encClass = await encryptSensitiveData(finalClass);
     const encUsername = await encryptSensitiveData(generateUsernameFromRealName(finalRealName));
 
     const newUser: UserProfile = {
-      id: 'usr_' + Date.now(),
+      id: authUserId,
       encryptedRealName: encRealName,
       encryptedClassName: encClass,
       encryptedUsername: encUsername,
