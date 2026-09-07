@@ -8,29 +8,40 @@ import {
   Clock,
   Sparkles,
   ShoppingBag,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
-import { ChatMessage, Conversation } from '../types';
+import { ChatMessage, Conversation, UserProfile } from '../types';
 
 interface ChatCenterProps {
   conversations: Conversation[];
   messages: ChatMessage[];
-  currentUserId: string;
+  currentUser: UserProfile | null;
   onSendMessage: (conversationId: string, text: string) => void;
   onScheduleMeet: (productId: string) => void;
+  onRefreshChat?: () => Promise<void> | void;
 }
 
 export const ChatCenter: React.FC<ChatCenterProps> = ({
   conversations,
   messages,
-  currentUserId,
+  currentUser,
   onSendMessage,
-  onScheduleMeet
+  onScheduleMeet,
+  onRefreshChat
 }) => {
-  // Lọc chỉ những cuộc trò chuyện mà user hiện tại tham gia (hoặc admin)
-  const myConversations = conversations.filter(c => 
-    !currentUserId || c.buyerId === currentUserId || c.sellerId === currentUserId || currentUserId.startsWith('admin')
-  );
+  const currentUserId = currentUser?.id || '';
+  const isAdmin = currentUser?.role === 'admin';
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Lọc cuộc trò chuyện: User thấy hội thoại mình tham gia (theo id hoặc displayName), Admin thấy toàn bộ hội thoại để giám sát phòng chống lừa đảo
+  const myConversations = conversations.filter(c => {
+    if (!currentUserId) return false;
+    if (isAdmin) return true; // Admin được xem tất cả để can thiệp tranh chấp và kiểm duyệt
+    return c.buyerId === currentUserId || 
+           c.sellerId === currentUserId || 
+           (currentUser?.displayName && (c.buyerDisplayName === currentUser.displayName || c.sellerDisplayName === currentUser.displayName));
+  });
 
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(() => {
     return myConversations.length > 0 ? myConversations[0].id : null;
@@ -85,9 +96,29 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
             Hệ thống tự động lưu vết biên bản chat chống gian lận. <b>Không cho phép xóa/sửa tin nhắn</b> để bảo vệ hai bên khi giải quyết tranh chấp.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-center">
-          <Lock className="w-3.5 h-3.5 text-emerald-600" />
-          Mã hoá PII & Lưu vết SLA
+        <div className="flex items-center gap-2">
+          {onRefreshChat && (
+            <button
+              onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                  await onRefreshChat();
+                } finally {
+                  setTimeout(() => setIsRefreshing(false), 500);
+                }
+              }}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              title="Đồng bộ lại toàn bộ tin nhắn từ Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Đang tải...' : 'Làm mới tin nhắn'}
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-center">
+            <Lock className="w-3.5 h-3.5 text-emerald-600" />
+            Mã hoá PII & Lưu vết SLA
+          </div>
         </div>
       </div>
 
@@ -221,7 +252,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
                   </div>
                 ) : (
                   activeMessages.map(msg => {
-                    const isMine = msg.senderId === currentUserId;
+                    const isMine = msg.senderId === currentUserId || (currentUser?.displayName && msg.senderDisplayName === currentUser.displayName);
                     return (
                       <div 
                         key={msg.id}

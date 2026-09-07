@@ -296,6 +296,11 @@ export function App() {
           setConversations(prev => JSON.stringify(prev) !== JSON.stringify(convs) ? convs : prev);
         }
       });
+      fetchMessagesFromSupabase().then(msgs => {
+        if (Array.isArray(msgs)) {
+          setMessages(prev => JSON.stringify(prev) !== JSON.stringify(msgs) ? msgs : prev);
+        }
+      });
     }, 3000);
 
     return () => {
@@ -613,6 +618,20 @@ export function App() {
               }
             });
           }
+          if (tab === 'chat') {
+            fetchConversationsFromSupabase().then(fresh => {
+              if (Array.isArray(fresh)) {
+                setConversations(fresh);
+                localStorage.setItem('ntsell_conversations', JSON.stringify(fresh));
+              }
+            });
+            fetchMessagesFromSupabase().then(fresh => {
+              if (Array.isArray(fresh)) {
+                setMessages(fresh);
+                localStorage.setItem('ntsell_messages', JSON.stringify(fresh));
+              }
+            });
+          }
         }}
         currentUser={currentUser}
         pendingCount={products.filter(p => p.status === 'pending_admin').length}
@@ -734,9 +753,23 @@ export function App() {
             <ChatCenter
               conversations={conversations}
               messages={messages}
-              currentUserId={currentUser?.id || 'user-current'}
+              currentUser={currentUser}
               onSendMessage={handleSendMessage}
               onScheduleMeet={() => setCurrentTab('transactions')}
+              onRefreshChat={async () => {
+                const [freshConvs, freshMsgs] = await Promise.all([
+                  fetchConversationsFromSupabase(),
+                  fetchMessagesFromSupabase()
+                ]);
+                if (Array.isArray(freshConvs)) {
+                  setConversations(freshConvs);
+                  localStorage.setItem('ntsell_conversations', JSON.stringify(freshConvs));
+                }
+                if (Array.isArray(freshMsgs)) {
+                  setMessages(freshMsgs);
+                  localStorage.setItem('ntsell_messages', JSON.stringify(freshMsgs));
+                }
+              }}
             />
           )}
 
