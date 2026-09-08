@@ -3,27 +3,34 @@ import React from 'react';
 export const FloatingShapesCSS: React.FC = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Khối cầu kính mờ 1 */}
+      {/* 1. Khối lập phương 3D Isometric mặt đa giác (Cube 1) */}
+      <div className="absolute top-6 right-16 w-24 h-24 transform -rotate-12 hover:rotate-0 transition-transform duration-700 opacity-60">
+        <div className="relative w-full h-full" style={{ perspective: '800px', transformStyle: 'preserve-3d' }}>
+          {/* Mặt trước */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/40 to-sky-400/30 rounded-2xl border border-white/30 backdrop-blur-md shadow-2xl" />
+          {/* Lớp nổi 3D */}
+          <div 
+            className="absolute inset-2 bg-gradient-to-br from-white/25 to-transparent rounded-xl border border-white/20"
+            style={{ transform: 'translateZ(20px)' }}
+          />
+        </div>
+      </div>
+
+      {/* 2. Vòng nhẫn hào quang 3D Torus mô phỏng (Ring 2) */}
       <div 
-        className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-300/10 backdrop-blur-md border border-white/20 animate-pulse"
-        style={{ animationDuration: '7s' }}
+        className="absolute top-1/3 -left-10 w-44 h-44 rounded-full border-8 border-sky-400/25 shadow-lg shadow-sky-500/20 transform rotate-45 animate-spin"
+        style={{ animationDuration: '40s', borderStyle: 'double' }}
       />
 
-      {/* Khối torus / nhẫn xoay nhẹ 2 */}
-      <div 
-        className="absolute top-1/2 -left-12 w-36 h-36 rounded-full border-4 border-dashed border-sky-300/20 animate-spin"
-        style={{ animationDuration: '35s' }}
-      />
+      {/* 3. Khối đa diện 3D toán học bồng bềnh góc dưới phải */}
+      <div className="absolute bottom-4 right-8 w-28 h-28 transform rotate-45 opacity-50">
+        <div className="w-full h-full rounded-3xl bg-gradient-to-tr from-purple-500/30 via-indigo-400/20 to-sky-300/30 border-2 border-white/30 backdrop-blur-lg shadow-2xl" />
+      </div>
 
-      {/* Khối lập phương nghiêng 3D 3 */}
+      {/* 4. Khối cầu phát sáng nổi 3D */}
       <div 
-        className="absolute bottom-4 right-1/4 w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-300/15 via-white/10 to-transparent backdrop-blur-sm border border-white/25 transform rotate-12"
-      />
-
-      {/* Hạt bụi sáng nhỏ 4 */}
-      <div 
-        className="absolute top-1/3 right-1/3 w-3 h-3 rounded-full bg-blue-300/40 blur-xs animate-ping"
-        style={{ animationDuration: '4s' }}
+        className="absolute -top-12 left-1/4 w-36 h-36 rounded-full bg-gradient-to-tr from-blue-600/30 via-sky-400/20 to-transparent blur-md border border-sky-300/30 animate-pulse"
+        style={{ animationDuration: '6s' }}
       />
     </div>
   );
