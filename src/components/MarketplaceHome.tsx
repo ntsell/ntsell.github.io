@@ -210,26 +210,26 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
       </div>
 
       {/* Thanh tìm kiếm & bộ lọc đa tiêu chí */}
-      <div id="filters" className="bg-white/85 backdrop-blur-2xl rounded-2xl border border-slate-200/90 p-3.5 sm:p-5 shadow-lg shadow-slate-200/60 space-y-3">
-        <div className="flex flex-col lg:flex-row gap-3">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div id="filters" className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-300 p-4 sm:p-5 shadow-xl shadow-slate-900/10 space-y-3.5">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Tìm theo tên máy, mã S/N, model Casio hoặc Flexio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 h-11 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white/90 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-sm transition-all"
+              className="w-full pl-11 pr-4 h-11 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-md transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
             {/* Filter Model */}
-            <div className="relative min-w-[145px]">
+            <div className="relative w-full sm:w-[155px]">
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-200 bg-white/90 shadow-sm cursor-pointer hover:border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-300 bg-white shadow-md cursor-pointer hover:border-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               >
                 <option value="ALL">Tất cả Model</option>
                 <option value="FX-580VN">Casio FX-580VN X</option>
@@ -237,40 +237,40 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                 <option value="FX-880BTG">Casio FX-880BTG</option>
                 <option value="Flexio">Flexio (Thiên Long)</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/85 text-white flex items-center justify-center pointer-events-none shadow-xs">
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center pointer-events-none shadow-xs">
                 <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
 
             {/* Filter Condition */}
-            <div className="relative min-w-[155px]">
+            <div className="relative w-full sm:w-[165px]">
               <select
                 value={selectedCondition}
                 onChange={(e) => setSelectedCondition(e.target.value)}
-                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-200 bg-white/90 shadow-sm cursor-pointer hover:border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-300 bg-white shadow-md cursor-pointer hover:border-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               >
                 <option value="ALL">Tất cả tình trạng</option>
                 <option value="brand_new">Mới tinh (Chưa dùng)</option>
                 <option value="like_new">Như mới</option>
                 <option value="used_good">Đã qua sử dụng</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/85 text-white flex items-center justify-center pointer-events-none shadow-xs">
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center pointer-events-none shadow-xs">
                 <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
 
             {/* Filter Sort */}
-            <div className="relative min-w-[140px]">
+            <div className="relative w-full sm:w-[150px]">
               <select
                 value={priceSort}
                 onChange={(e) => setPriceSort(e.target.value as any)}
-                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-200 bg-white/90 shadow-sm cursor-pointer hover:border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                className="appearance-none w-full pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl border border-slate-300 bg-white shadow-md cursor-pointer hover:border-slate-400 focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               >
                 <option value="default">Mới nhất</option>
                 <option value="asc">Giá: Thấp đến Cao</option>
                 <option value="desc">Giá: Cao đến Thấp</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/85 text-white flex items-center justify-center pointer-events-none shadow-xs">
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center pointer-events-none shadow-xs">
                 <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
