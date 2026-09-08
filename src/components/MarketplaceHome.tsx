@@ -9,7 +9,8 @@ import {
   MessageSquare, 
   AlertTriangle,
   ArrowUpDown,
-  Tag
+  Tag,
+  ChevronDown
 } from 'lucide-react';
 import { Product, ProductCondition, UserProfile } from '../types';
 import { Card3DTilt } from './3d/Card3DTilt';
@@ -223,38 +224,56 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
-            >
-              <option value="ALL">Tất cả Model</option>
-              <option value="FX-580VN">Casio FX-580VN X</option>
-              <option value="FX-570VN">Casio FX-570VN Plus</option>
-              <option value="FX-880BTG">Casio FX-880BTG</option>
-              <option value="Flexio">Flexio (Thiên Long)</option>
-            </select>
+            {/* Filter Model */}
+            <div className="relative">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">Tất cả Model</option>
+                <option value="FX-580VN">Casio FX-580VN X</option>
+                <option value="FX-570VN">Casio FX-570VN Plus</option>
+                <option value="FX-880BTG">Casio FX-880BTG</option>
+                <option value="Flexio">Flexio (Thiên Long)</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              </div>
+            </div>
 
-            <select
-              value={selectedCondition}
-              onChange={(e) => setSelectedCondition(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
-            >
-              <option value="ALL">Tất cả tình trạng</option>
-              <option value="brand_new">Mới tinh (Chưa dùng)</option>
-              <option value="like_new">Như mới</option>
-              <option value="used_good">Đã qua sử dụng</option>
-            </select>
+            {/* Filter Condition */}
+            <div className="relative">
+              <select
+                value={selectedCondition}
+                onChange={(e) => setSelectedCondition(e.target.value)}
+                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">Tất cả tình trạng</option>
+                <option value="brand_new">Mới tinh (Chưa dùng)</option>
+                <option value="like_new">Như mới</option>
+                <option value="used_good">Đã qua sử dụng</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              </div>
+            </div>
 
-            <select
-              value={priceSort}
-              onChange={(e) => setPriceSort(e.target.value as any)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
-            >
-              <option value="default">Mới nhất</option>
-              <option value="asc">Giá: Thấp đến Cao</option>
-              <option value="desc">Giá: Cao đến Thấp</option>
-            </select>
+            {/* Filter Sort */}
+            <div className="relative">
+              <select
+                value={priceSort}
+                onChange={(e) => setPriceSort(e.target.value as any)}
+                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="default">Mới nhất</option>
+                <option value="asc">Giá: Thấp đến Cao</option>
+                <option value="desc">Giá: Cao đến Thấp</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
