@@ -86,7 +86,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
           {onNavigateToAdmin && (
             <button
               onClick={onNavigateToAdmin}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-indigo-600/20 shrink-0 flex items-center gap-2"
+              className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-indigo-600/20 shrink-0 flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4" />
               Mở Bảng Quản Trị Duyệt Bài ({pendingCount})
@@ -96,28 +96,28 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
       )}
 
       {/* Hero Banner trường học */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white p-6 sm:p-10 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white p-5 sm:p-10 shadow-xl">
         <div className="relative z-10 max-w-2xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-semibold tracking-wide uppercase text-blue-200">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            Xác thực danh sách trường • Mã hoá PII AES-256
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="truncate">Xác thực trường • PII AES-256</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-            Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-3xl sm:text-4xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+            Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-2xl sm:text-4xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
           </h1>
-          <p className="text-sm text-blue-100/90 leading-relaxed">
+          <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
             Trao đổi máy tính Casio FX-580VN, FX-570VN, Flexio giữa học sinh trong trường. 100% giao dịch có biên bản video 5 bước và thẩm định Serial Number chính hãng.
           </p>
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2 w-full sm:w-auto">
             <button
               onClick={onOpenCreateModal}
-              className="px-5 py-2.5 bg-white text-blue-700 font-bold text-xs sm:text-sm rounded-xl hover:bg-blue-50 transition shadow-md"
+              className="w-full sm:w-auto px-5 py-2.5 bg-white text-blue-700 font-bold text-xs sm:text-sm rounded-xl hover:bg-blue-50 transition shadow-md text-center"
             >
               Đăng Bán Máy Tính Của Bạn
             </button>
             <a
               href="#filters"
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm rounded-xl backdrop-blur transition"
+              className="w-full sm:w-auto px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm rounded-xl backdrop-blur transition text-center"
             >
               Khám Phá Máy Tính ({filteredProducts.length})
             </a>
@@ -125,28 +125,28 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         </div>
 
         {/* Decorative background circle */}
-        <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute right-0 bottom-0 w-48 h-48 sm:w-80 sm:h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
       </div>
 
       {/* Thanh tìm kiếm & bộ lọc đa tiêu chí */}
-      <div id="filters" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      <div id="filters" className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Tìm theo tên máy, mã S/N, model Casio hoặc Flexio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
             >
               <option value="ALL">Tất cả Model</option>
               <option value="FX-580VN">Casio FX-580VN X</option>
@@ -158,7 +158,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <select
               value={selectedCondition}
               onChange={(e) => setSelectedCondition(e.target.value)}
-              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
             >
               <option value="ALL">Tất cả tình trạng</option>
               <option value="brand_new">Mới tinh (Chưa dùng)</option>
@@ -169,7 +169,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <select
               value={priceSort}
               onChange={(e) => setPriceSort(e.target.value as any)}
-              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
             >
               <option value="default">Mới nhất</option>
               <option value="asc">Giá: Thấp đến Cao</option>

@@ -314,22 +314,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Logo & Tên nền tảng */}
           <div 
             onClick={() => setCurrentTab('home')}
-            className="flex items-center gap-2.5 cursor-pointer select-none"
+            className="flex items-center gap-2 cursor-pointer select-none min-w-0 shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <Calculator className="w-6 h-6" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
+              <Calculator className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-2">
-                <div className="flex items-baseline gap-1 select-none overflow-visible">
-                  <span className="font-script-flair text-2xl text-blue-600 inline-block drop-shadow-xs hover:scale-105 transition-transform leading-normal px-1">
+            <div className="flex flex-col justify-center min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-baseline gap-0.5 select-none overflow-visible">
+                  <span className="font-script-flair text-xl sm:text-2xl text-blue-600 inline-block drop-shadow-xs hover:scale-105 transition-transform leading-normal px-0.5">
                     NTSell
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block mb-1.5 animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block mb-1 animate-pulse shrink-0"></span>
                 </div>
                 
                 {/* Huy hiệu vai trò tài khoản: Tùy chỉnh theo tài khoản hiện tại (Admin / Học Sinh) */}
-                <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${
+                <span className={`text-[9px] sm:text-[10px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded-full border shadow-2xs whitespace-nowrap shrink-0 ${
                   currentUser?.role === 'admin'
                     ? 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border-indigo-200/80'
                     : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200/60'
@@ -337,7 +337,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {currentUser?.role === 'admin' ? 'Quản Trị' : 'Học Sinh'}
                 </span>
               </div>
-              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase px-1 -mt-0.5">
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-wider uppercase px-0.5 -mt-0.5 hidden xs:block sm:block">
                 MarketPlace
               </p>
             </div>
@@ -409,18 +409,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {currentUser ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <button
                   onClick={() => setCurrentTab('dashboard')}
-                  className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition"
+                  className="flex items-center gap-1.5 p-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition shrink-0"
+                  title={currentUser.displayName}
                 >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white ${
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 ${
                     currentUser.role === 'admin' ? 'bg-indigo-600 ring-2 ring-indigo-300' : 'bg-blue-600'
                   }`}>
                     {currentUser.displayName.charAt(0).toUpperCase()}
                   </div>
                   <div className="text-left hidden sm:block">
-                    <p className="text-xs font-semibold text-slate-900 leading-tight">
+                    <p className="text-xs font-semibold text-slate-900 leading-tight truncate max-w-[120px]">
                       {currentUser.displayName}
                     </p>
                     <p className="text-[10px] text-emerald-600 font-medium leading-none flex items-center gap-0.5">
@@ -430,19 +431,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
 
                 {/* Nút Chuông Thông Báo (Realtime Notifications) */}
-                <div className="relative" ref={notifDropdownRef}>
+                <div className="relative shrink-0" ref={notifDropdownRef}>
                   <button
                     onClick={() => setIsNotifOpen(!isNotifOpen)}
                     title="Thông báo hệ thống"
-                    className={`relative p-2 rounded-lg transition ${
+                    className={`relative p-1.5 sm:p-2 rounded-lg transition shrink-0 ${
                       isNotifOpen 
                         ? 'bg-blue-50 text-blue-600' 
                         : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
                     }`}
                   >
-                    <Bell className="w-5 h-5" />
+                    <Bell className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-black min-w-4.5 h-4.5 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
+                      <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] sm:text-[10px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
@@ -450,7 +451,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Dropdown danh sách thông báo */}
                   {isNotifOpen && (
-                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute right-0 mt-2 w-72 sm:w-96 max-w-[calc(100vw-24px)] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
                         <div className="flex items-center gap-2">
                           <Bell className="w-4 h-4 text-blue-600" />
@@ -555,10 +556,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     onClick={() => setCurrentTab('admin')}
                     title="Bảng Quản Trị Hệ Thống"
-                    className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition font-bold text-xs shadow-xs"
+                    className="relative hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition font-bold text-xs shadow-xs shrink-0"
                   >
                     <HardDrive className="w-4 h-4 text-indigo-600" />
-                    <span className="hidden sm:inline">Quản Trị</span>
+                    <span>Quản Trị</span>
                     {pendingCount > 0 && (
                       <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-black rounded-full animate-bounce">
                         {pendingCount}
@@ -570,7 +571,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={onLogout}
                   title="Đăng xuất"
-                  className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  className="p-1.5 sm:p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -578,10 +579,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={onOpenAuthModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-600/25"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-600/25 shrink-0"
               >
-                <User className="w-4 h-4" />
-                Tạo Tài Khoản / Đăng Nhập
+                <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="sm:hidden">Đăng Nhập</span>
+                <span className="hidden sm:inline">Tạo Tài Khoản / Đăng Nhập</span>
               </button>
             )}
           </div>
@@ -657,7 +659,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     {/* Mobile Fixed Bottom App Navigation Bar */}
     <nav
       ref={mobileBarRef}
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200/80 bg-white/95 backdrop-blur-md justify-around py-2 px-1 text-[11px] select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(env(safe-area-inset-bottom)+8px)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex w-full max-w-full overflow-hidden border-t border-slate-200/80 bg-white/95 backdrop-blur-md justify-around py-1.5 px-0.5 text-[11px] select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(env(safe-area-inset-bottom)+6px)]"
     >
       {/* Lớp hạt tan vỡ bay qua tab được chọn (Particle Shatter & Fly Layer) */}
       {particles.map(p => (
@@ -691,7 +693,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             key={item.id}
             ref={(el) => { mobileTabRefs.current[item.id] = el; }}
             onClick={() => handleMobileTabClick(item.id)}
-            className={`flex flex-col items-center gap-0.5 transition-all duration-150 flex-1 max-w-[68px] ${
+            className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-150 flex-1 min-w-0 max-w-[68px] px-0.5 ${
               isActive ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -715,7 +717,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-[10px] leading-tight truncate">{item.label}</span>
+            <span className="text-[10px] leading-tight truncate w-full text-center">{item.label}</span>
           </button>
         );
       })}

@@ -665,7 +665,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Navigation Header */}
       <Navbar
         currentTab={currentTab}
