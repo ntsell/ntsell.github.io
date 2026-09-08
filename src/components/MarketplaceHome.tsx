@@ -219,7 +219,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               placeholder="Tìm theo tên máy, mã S/N, model Casio hoặc Flexio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-white/80 bg-white/60 backdrop-blur-md focus:bg-white/95 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 h-11 text-xs sm:text-sm rounded-xl border border-white/80 bg-white/60 backdrop-blur-md focus:bg-white/95 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
@@ -229,7 +229,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full min-w-0 pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALL">Tất cả Model</option>
                 <option value="FX-580VN">Casio FX-580VN X</option>
@@ -237,8 +237,8 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                 <option value="FX-880BTG">Casio FX-880BTG</option>
                 <option value="Flexio">Flexio (Thiên Long)</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
-                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
 
@@ -247,15 +247,15 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               <select
                 value={selectedCondition}
                 onChange={(e) => setSelectedCondition(e.target.value)}
-                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full min-w-0 pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALL">Tất cả tình trạng</option>
                 <option value="brand_new">Mới tinh (Chưa dùng)</option>
                 <option value="like_new">Như mới</option>
                 <option value="used_good">Đã qua sử dụng</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
-                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
 
@@ -264,14 +264,14 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               <select
                 value={priceSort}
                 onChange={(e) => setPriceSort(e.target.value as any)}
-                className="appearance-none w-full min-w-0 pl-3.5 pr-9 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full min-w-0 pl-3.5 pr-10 h-11 text-xs sm:text-sm font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="default">Mới nhất</option>
                 <option value="asc">Giá: Thấp đến Cao</option>
                 <option value="desc">Giá: Cao đến Thấp</option>
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
-                <ChevronDown className="w-3 h-3 text-white stroke-[2.5]" />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900/80 text-white flex items-center justify-center pointer-events-none shadow-xs">
+                <ChevronDown className="w-3.5 h-3.5 text-white stroke-[2.5]" />
               </div>
             </div>
           </div>
