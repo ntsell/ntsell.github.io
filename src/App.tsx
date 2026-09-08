@@ -422,7 +422,13 @@ export function App() {
       }
 
       // Lưu trực tiếp lên Database Supabase đám mây
-      insertProductToSupabase(newProduct);
+      insertProductToSupabase(newProduct).then(success => {
+        if (success) {
+          console.log('✅ Sản phẩm đã đồng bộ thành công lên Supabase');
+        } else {
+          console.warn('⚠️ Không thể đồng bộ sản phẩm lên Supabase');
+        }
+      });
 
       // Bắn thông báo tới Admin về yêu cầu đăng bán mới
       sendNotification({

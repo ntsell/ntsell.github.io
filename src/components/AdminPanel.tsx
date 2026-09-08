@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Check, 
@@ -90,6 +90,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return [];
     }
   });
+
+  useEffect(() => {
+    onRefreshProducts?.();
+  }, []);
 
   const pendingRequests = verificationRequests.filter(r => r.status === 'pending');
 

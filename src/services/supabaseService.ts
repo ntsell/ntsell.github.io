@@ -36,23 +36,22 @@ export function mapAppProductToDb(p: Product): any {
   return {
     id: p.id,
     seller_id: p.sellerId,
-    seller_display_name: p.sellerDisplayName,
-    seller_trust_score: p.sellerTrustScore,
+    seller_display_name: p.sellerDisplayName || 'Học sinh NTSell',
+    seller_trust_score: p.sellerTrustScore ?? 100,
     title: p.title,
     model: p.model,
-    price: p.price,
+    price: Number(p.price),
     condition: p.condition,
-    description: p.description,
-    serial_number: p.serialNumber,
-    masked_serial_number: p.maskedSerialNumber,
-    encrypted_serial_number: p.encryptedSerialNumber,
-    sn_status: p.snStatus,
-    image_urls: p.imageUrls,
-    demo_video_url: p.demoVideoUrl,
-    trade_location: p.tradeLocation,
-    status: p.status,
-    admin_notes: p.adminNotes,
-    created_at: p.createdAt
+    description: p.description || '',
+    serial_number: p.serialNumber || '',
+    masked_serial_number: p.maskedSerialNumber || '',
+    sn_status: p.snStatus || 'unverified',
+    image_urls: Array.isArray(p.imageUrls) ? p.imageUrls : [],
+    demo_video_url: p.demoVideoUrl || null,
+    trade_location: p.tradeLocation || 'Khuôn viên trường',
+    status: p.status || 'pending_admin',
+    admin_notes: p.adminNotes || null,
+    created_at: p.createdAt || new Date().toISOString()
   };
 }
 
@@ -61,9 +60,11 @@ const ORIGINAL_SELLER_PREFIX = '@@ORIGINAL_SELLER@@';
 
 // Hàm nội bộ: đăng nhập admin để có Supabase Auth session hợp lệ (bypass RLS)
 async function ensureAdminSession() {
-  // Kiểm tra session hiện tại
+  // Chỉ chấp nhận session hiện tại nếu là tài khoản quản trị viên admin1/admin2
   const current = (await supabase.auth.getSession()).data.session;
-  if (current?.user) return current;
+  if (current?.user?.email && current.user.email.startsWith('admin')) {
+    return current;
+  }
 
   // Đăng nhập admin1
   const res = await supabase.auth.signInWithPassword({
@@ -169,7 +170,14 @@ export async function updateProductStatusInSupabase(
     await ensureAdminSession();
     const updateData: any = { status };
     if (adminNotes !== undefined) {
-      updateData.admin_notes = adminNotes;
+      // Bảo tồn seller_id gốc nếu có trong admin_notes
+      const { data: existing } = await supabase.from('products').select('admin_notes').eq('id', id).single();
+      if (existing?.admin_notes && typeof existing.admin_notes === 'string' && existing.admin_notes.startsWith(ORIGINAL_SELLER_PREFIX)) {
+        const prefix = existing.admin_notes.split('\n')[0];
+        updateData.admin_notes = adminNotes ? `${prefix}\n${adminNotes}` : prefix;
+      } else {
+        updateData.admin_notes = adminNotes;
+      }
     }
     const { error } = await supabase.from('products').update(updateData).eq('id', id);
     if (error) {
