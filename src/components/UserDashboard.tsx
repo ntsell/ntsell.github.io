@@ -84,7 +84,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <span>Đã tham gia: {new Date(currentUser.createdAt).toLocaleDateString('vi-VN')}</span>
               <span>•</span>
               <span className="text-indigo-600 font-semibold flex items-center gap-1">
-                <Lock className="w-3 h-3" /> PII Mã hoá AES-256
+                <Lock className="w-3 h-3" /> PII Được Mã hoá
               </span>
             </p>
           </div>

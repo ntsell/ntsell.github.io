@@ -522,7 +522,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
                 />
                 <p className="text-[10px] text-slate-500 mt-1 leading-tight flex items-center gap-1">
                   <Lock className="w-3 h-3 text-indigo-600 shrink-0" />
-                  Hệ thống tự động che giấu ký tự bảo mật (Masking) trên sàn và mã hóa AES-256 để chống cào quét trộm mã S/N của học sinh.
+                  Hệ thống tự động che giấu ký tự bảo mật (Masking) trên sàn và mã hóa để chống cào quét trộm mã S/N của học sinh.
                 </p>
               </div>
             </div>

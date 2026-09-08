@@ -73,7 +73,7 @@ export const WikiTerms: React.FC = () => {
           4. Chính Sách Bảo Vệ Dữ Liệu Cá Nhân (GDPR & PII)
         </h2>
         <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
-          <p>• Tên thật, lớp học và số điện thoại được <b>mã hoá AES-256</b> trong cơ sở dữ liệu Supabase.</p>
+          <p>• Tên thật, lớp học và số điện thoại được <b>mã hoá</b> trong cơ sở dữ liệu.</p>
           <p>• Tuyệt đối không chia sẻ thông tin học sinh cho bên thứ ba hoặc các đơn vị quảng cáo.</p>
           <p>• Video giao dịch trên Google Drive <b>tự động xóa vĩnh viễn sau 6 tháng</b> đối với các giao dịch hoàn tất không có tranh chấp.</p>
         </div>

@@ -879,7 +879,7 @@ export function App() {
                 </div>
                 <h3 className="font-extrabold text-slate-900 text-lg">Chưa Đăng Nhập Tài Khoản</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Vui lòng đăng ký tài khoản với tên và lớp học của bạn để quản lý hồ sơ bảo mật PII AES-256 và theo dõi lịch sử giao dịch.
+                  Vui lòng đăng ký tài khoản với tên và lớp học của bạn để quản lý hồ sơ bảo mật PII được mã hóa và theo dõi lịch sử giao dịch.
                 </p>
                 <button
                   onClick={() => setIsAuthOpen(true)}

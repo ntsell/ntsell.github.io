@@ -150,7 +150,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
               }}
               disabled={isRefreshing}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50 shadow-2xs"
-              title="Đồng bộ lại toàn bộ tin nhắn từ Supabase"
+              title="Đồng bộ lại toàn bộ tin nhắn từ hệ thống"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Đang tải...' : 'Làm mới'}

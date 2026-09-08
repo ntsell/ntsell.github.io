@@ -100,7 +100,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         <div className="relative z-10 max-w-2xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-semibold tracking-wide uppercase text-blue-200">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="truncate">Xác thực trường • PII AES-256</span>
+            <span className="truncate">Xác thực trường • PII Mã hoá bảo mật</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
             Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-2xl sm:text-4xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
