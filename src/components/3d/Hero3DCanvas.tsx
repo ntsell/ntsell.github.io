@@ -1,5 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { FloatingShapesCSS } from './FloatingShapesCSS';
@@ -7,17 +7,36 @@ import { FloatingShapesCSS } from './FloatingShapesCSS';
 // Mô hình máy tính Casio 3D thu nhỏ bồng bềnh ở góc Hero
 const Mini3DCalculator: React.FC = () => {
   const calcRef = useRef<THREE.Group | null>(null);
+  const { viewport } = useThree();
+  const isMobile = viewport.width < 6.0;
 
   useFrame((state) => {
     if (!calcRef.current) return;
     const t = state.clock.getElapsedTime();
-    calcRef.current.rotation.y = Math.sin(t * 0.6) * 0.35 + 0.2;
-    calcRef.current.rotation.x = Math.cos(t * 0.5) * 0.2 + 0.15;
-    calcRef.current.position.y = Math.sin(t * 1.2) * 0.12;
+    calcRef.current.rotation.y = Math.sin(t * 0.6) * 0.35 - 0.25;
+    calcRef.current.rotation.x = Math.cos(t * 0.5) * 0.18 + 0.12;
+    calcRef.current.position.y = (isMobile ? -0.4 : 0.0) + Math.sin(t * 1.2) * 0.14;
   });
 
+  const posX = isMobile ? viewport.width * 0.28 : Math.min(2.7, viewport.width * 0.28);
+  const scale = isMobile ? 0.62 : 0.92;
+
   return (
-    <group ref={calcRef} position={[2.8, -0.2, 0.5]} rotation={[0.2, -0.4, 0.1]} scale={0.75}>
+    <group ref={calcRef} position={[posX, isMobile ? -0.4 : 0.0, 0.5]} rotation={[0.15, -0.3, 0.06]} scale={scale}>
+      {/* Tấm kính mờ 3D Glass Plate tạo chiều sâu như hiệu ứng ảnh 1 */}
+      <mesh position={[0, 0, -0.22]}>
+        <boxGeometry args={[2.5, 4.0, 0.06]} />
+        <meshStandardMaterial
+          color="#38bdf8"
+          emissive="#0284c7"
+          emissiveIntensity={0.25}
+          roughness={0.15}
+          metalness={0.8}
+          transparent
+          opacity={0.35}
+        />
+      </mesh>
+
       {/* Thân máy chính */}
       <mesh>
         <boxGeometry args={[2.1, 3.6, 0.28]} />

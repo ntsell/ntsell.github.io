@@ -99,83 +99,55 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         </div>
       )}
 
-      {/* Hero Banner trường học với 3D Parallax & 3D Showcase */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white p-5 sm:p-10 shadow-xl">
+      {/* Hero Banner trường học với 3D Three.js & Hiệu ứng kính mờ Glassmorphism phủ nền */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-800/95 via-indigo-900/90 to-slate-950 text-white p-6 sm:p-10 shadow-2xl border border-white/20">
         {/* Layer 3D Parallax & Shapes (Three.js WebGL) */}
         <Suspense fallback={<FloatingShapesCSS />}>
           <Hero3DCanvas />
         </Suspense>
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          {/* Cột trái: Thông tin & Hành động */}
-          <div className="md:col-span-7 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-xs font-semibold tracking-wide uppercase text-blue-200">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">Xác thực trường • PII Mã hoá bảo mật</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-              Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-2xl sm:text-4xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
-              Trao đổi máy tính Casio FX-580VN, FX-570VN, Flexio giữa học sinh trong trường. 100% giao dịch có biên bản video 5 bước và thẩm định Serial Number chính hãng.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-2 w-full sm:w-auto">
-              <button
-                onClick={onOpenCreateModal}
-                className="w-full sm:w-auto px-5 py-2.5 bg-white text-blue-700 font-bold text-xs sm:text-sm rounded-xl hover:bg-blue-50 transition shadow-md text-center"
-              >
-                Đăng Bán Máy Tính Của Bạn
-              </button>
-              <a
-                href="#filters"
-                className="w-full sm:w-auto px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm rounded-xl backdrop-blur transition text-center"
-              >
-                Khám Phá Máy Tính ({filteredProducts.length})
-              </a>
-            </div>
+        {/* Lớp kính mờ Glassmorphism (thừa hưởng hiệu ứng thẻ ảnh 1) phủ đè lên background */}
+        <div className="absolute inset-0 bg-white/[0.07] backdrop-blur-[2px] rounded-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-white/30 via-white/5 to-transparent pointer-events-none" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-sky-400/15 via-indigo-400/10 to-purple-400/15 rounded-3xl blur-xl -z-10 pointer-events-none" />
+
+        <div className="relative z-10 max-w-2xl space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 shadow-sm">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="truncate">Xác thực trường • PII Mã hoá bảo mật</span>
           </div>
 
-          {/* Cột phải: Thẻ Hologram 3D Nổi Trực Quan */}
-          <div className="md:col-span-5 hidden md:flex flex-col items-center justify-center">
-            <Card3DTilt maxTilt={15} scale={1.05} className="w-full max-w-xs">
-              <div 
-                className="p-5 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/25 shadow-2xl space-y-3.5 text-white"
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <div className="flex items-center justify-between" style={{ transform: 'translateZ(25px)' }}>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-300 bg-sky-900/50 px-2.5 py-0.5 rounded-full border border-sky-400/30">
-                    MÔ HÌNH 3D CHUẨN
-                  </span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-                </div>
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+            Sàn Trao Đổi Máy Tính <span className="font-brand-creative font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">NTSell</span> <span className="font-script-flair text-2xl sm:text-4xl lg:text-5xl text-sky-300 inline-block transform -rotate-3 ml-1">Học Đường</span>
+          </h1>
 
-                <div className="text-center py-2" style={{ transform: 'translateZ(35px)' }}>
-                  <div className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-amber-200">
-                    Casio FX-580VN X
-                  </div>
-                  <p className="text-[11px] text-blue-200/80 mt-1">
-                    Chính Hãng Bitex • Màn Hình LCD Đẹp
-                  </p>
-                </div>
+          <p className="text-xs sm:text-base text-blue-100/90 leading-relaxed max-w-xl">
+            Trao đổi máy tính Casio FX-580VN, FX-570VN, Flexio giữa học sinh trong trường. 100% giao dịch có biên bản video 5 bước và thẩm định Serial Number chính hãng.
+          </p>
 
-                <div className="space-y-2 text-xs" style={{ transform: 'translateZ(30px)' }}>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur border border-white/15">
-                    <ShieldCheck className="w-4 h-4 text-emerald-300 shrink-0" />
-                    <span className="text-[11px] font-semibold text-slate-100">Serial: 000A005CAD52 (Khớp 100%)</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur border border-white/15">
-                    <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-                    <span className="text-[11px] font-semibold text-slate-100">Bảo hành đối soát 24/7</span>
-                  </div>
-                </div>
-              </div>
-            </Card3DTilt>
+          <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full sm:w-auto">
+            <button
+              onClick={onOpenCreateModal}
+              className="w-full sm:w-auto px-6 py-3 bg-white text-blue-700 font-bold text-xs sm:text-sm rounded-xl hover:bg-blue-50 transition shadow-lg shadow-blue-950/20 text-center"
+            >
+              Đăng Bán Máy Tính Của Bạn
+            </button>
+            <a
+              href="#filters"
+              className="w-full sm:w-auto px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition text-center shadow-sm"
+            >
+              Khám Phá Máy Tính ({filteredProducts.length})
+            </a>
           </div>
         </div>
 
-        {/* Decorative background circle */}
-        <div className="absolute right-0 bottom-0 w-48 h-48 sm:w-80 sm:h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Decorative background glow */}
+        <div className="absolute right-0 bottom-0 w-64 h-64 sm:w-96 sm:h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
       </div>
+
+
 
       {/* Dải 4 Thẻ Tính Năng Chiều Sâu 3D Tương Tác */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
