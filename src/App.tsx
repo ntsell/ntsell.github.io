@@ -116,6 +116,9 @@ export function App() {
     }
   });
 
+  const [activeChatConvoId, setActiveChatConvoId] = useState<string | null>(null);
+
+
   // Hàm tạo và gửi thông báo mới với realtime BroadcastChannel + sync server
   const sendNotification = (newNotif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const notif: AppNotification = {
@@ -405,6 +408,9 @@ export function App() {
         bc.close();
       }
       upsertConversationToSupabase(newConvo);
+      setActiveChatConvoId(newConvo.id);
+    } else {
+      setActiveChatConvoId(existingConvo.id);
     }
 
     setCurrentTab('chat');
@@ -812,7 +818,13 @@ export function App() {
             <TransactionRoom
               transactions={transactions}
               onUploadProof={handleUploadProof}
-              onOpenChat={() => setCurrentTab('chat')}
+              onOpenChat={(productId) => {
+                const convo = conversations.find(c => c.productId === productId && (c.buyerId === currentUser?.id || c.sellerId === currentUser?.id));
+                if (convo) {
+                  setActiveChatConvoId(convo.id);
+                }
+                setCurrentTab('chat');
+              }}
               onFileDispute={handleFileDispute}
             />
           )}
@@ -822,6 +834,7 @@ export function App() {
               conversations={conversations}
               messages={messages}
               currentUser={currentUser}
+              initialConvoId={activeChatConvoId}
               onSendMessage={handleSendMessage}
               onScheduleMeet={() => setCurrentTab('transactions')}
               onRefreshChat={async () => {

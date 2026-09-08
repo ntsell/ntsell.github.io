@@ -5,12 +5,13 @@ import {
   Lock, 
   MessageSquare, 
   Calendar,
-  Clock,
-  Sparkles,
-  ShoppingBag,
-  ExternalLink,
-  RefreshCw,
-  ArrowLeft
+  Sparkles, 
+  ShoppingBag, 
+  RefreshCw, 
+  ArrowLeft,
+  Search,
+  CheckCheck,
+  Smile
 } from 'lucide-react';
 import { ChatMessage, Conversation, UserProfile } from '../types';
 
@@ -18,6 +19,7 @@ interface ChatCenterProps {
   conversations: Conversation[];
   messages: ChatMessage[];
   currentUser: UserProfile | null;
+  initialConvoId?: string | null;
   onSendMessage: (conversationId: string, text: string) => void;
   onScheduleMeet: (productId: string) => void;
   onRefreshChat?: () => Promise<void> | void;
@@ -27,76 +29,114 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
   conversations,
   messages,
   currentUser,
+  initialConvoId,
   onSendMessage,
   onScheduleMeet,
   onRefreshChat
 }) => {
-  const currentUserId = currentUser?.id || '';
+  const currentUserId = (currentUser?.id || '').trim().toLowerCase();
+  const currentUserName = (currentUser?.displayName || '').trim().toLowerCase();
   const isAdmin = currentUser?.role === 'admin';
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Lọc cuộc trò chuyện: User thấy hội thoại mình tham gia (theo id hoặc displayName), Admin thấy toàn bộ hội thoại để giám sát phòng chống lừa đảo
+  // Lọc cuộc trò chuyện: User thấy hội thoại mình tham gia (so khớp ID hoặc Tên không phân biệt hoa thường), Admin thấy toàn bộ
   const myConversations = conversations.filter(c => {
-    if (!currentUserId) return false;
-    if (isAdmin) return true; // Admin được xem tất cả để can thiệp tranh chấp và kiểm duyệt
-    return c.buyerId === currentUserId || 
-           c.sellerId === currentUserId || 
-           (currentUser?.displayName && (c.buyerDisplayName === currentUser.displayName || c.sellerDisplayName === currentUser.displayName));
+    if (!currentUser) return false;
+    if (isAdmin) return true;
+    const bId = (c.buyerId || '').trim().toLowerCase();
+    const sId = (c.sellerId || '').trim().toLowerCase();
+    const bName = (c.buyerDisplayName || '').trim().toLowerCase();
+    const sName = (c.sellerDisplayName || '').trim().toLowerCase();
+
+    return (
+      (currentUserId && (bId === currentUserId || sId === currentUserId)) ||
+      (currentUserName && (bName === currentUserName || sName === currentUserName))
+    );
   });
 
+  // Tìm kiếm trong danh sách hội thoại
+  const filteredConversations = myConversations.filter(c => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const partnerName = (c.buyerId === currentUser?.id ? c.sellerDisplayName : c.buyerDisplayName) || '';
+    return (
+      partnerName.toLowerCase().includes(q) ||
+      (c.productTitle || '').toLowerCase().includes(q) ||
+      (c.lastMessage || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Quản lý hội thoại đang mở (Mobile: null = hiển thị danh sách, có ID = mở khung chat)
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(() => {
+    if (initialConvoId && myConversations.some(c => c.id === initialConvoId)) {
+      return initialConvoId;
+    }
+    // Trên điện thoại (<768px): ưu tiên hiển thị Hộp thư đối tác trước
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return null;
+    }
     return myConversations.length > 0 ? myConversations[0].id : null;
   });
 
+  // Đồng bộ initialConvoId khi mở từ trang chi tiết sản phẩm
+  useEffect(() => {
+    if (initialConvoId && myConversations.some(c => c.id === initialConvoId)) {
+      setSelectedConvoId(initialConvoId);
+    }
+  }, [initialConvoId]);
+
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  // Tự động chọn cuộc trò chuyện đầu tiên nếu chưa chọn hoặc danh sách thay đổi
-  useEffect(() => {
-    if (myConversations.length > 0) {
-      if (!selectedConvoId || !myConversations.some(c => c.id === selectedConvoId)) {
-        setSelectedConvoId(myConversations[0].id);
-      }
-    } else {
-      setSelectedConvoId(null);
-    }
-  }, [myConversations, selectedConvoId]);
 
   const activeConvo = myConversations.find(c => c.id === selectedConvoId) || null;
   const activeMessages = selectedConvoId 
     ? messages.filter(m => m.conversationId === selectedConvoId) 
     : [];
 
-  // Tự cuộn xuống tin nhắn mới nhất
+  // Tự cuộn xuống cuối khi có tin nhắn mới
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMessages.length]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [activeMessages.length, selectedConvoId]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || !activeConvo) return;
-    onSendMessage(activeConvo.id, inputMessage.trim());
-    setInputMessage('');
+  const handleSend = (textToSend?: string) => {
+    const text = (textToSend !== undefined ? textToSend : inputMessage).trim();
+    if (!text || !activeConvo) return;
+    onSendMessage(activeConvo.id, text);
+    if (textToSend === undefined) {
+      setInputMessage('');
+    }
   };
 
-  // Xác định người chat đối tác (Buyer hay Seller)
   const getPartnerDisplayName = (convo: Conversation) => {
-    return convo.buyerId === currentUserId ? convo.sellerDisplayName : convo.buyerDisplayName;
+    const isBuyer = (convo.buyerId && convo.buyerId.toLowerCase() === currentUserId) || 
+                    (convo.buyerDisplayName && convo.buyerDisplayName.toLowerCase() === currentUserName);
+    return isBuyer ? convo.sellerDisplayName : convo.buyerDisplayName;
   };
+
+  const quickReplies = [
+    'Máy tính còn không bạn ơi?',
+    'Có fix giá thêm chút không ạ?',
+    'Hẹn ra chơi gặp test máy nhé!',
+    'Máy có kèm nắp bảo vệ và pin không bạn?'
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-2 sm:px-4 py-2 sm:py-6">
       {/* Tiêu đề & Giới thiệu tính năng */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <MessageSquare className="w-7 h-7 text-blue-600" />
-            Kênh Chat & Biên Bản Thương Lượng Trực Tuyến
+          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            Tin Nhắn Messenger Học Đường
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Hệ thống tự động lưu vết biên bản chat chống gian lận. <b>Không cho phép xóa/sửa tin nhắn</b> để bảo vệ hai bên khi giải quyết tranh chấp.
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+            Biên bản thương lượng được mã hoá PII & lưu trữ đối soát tự động 24/7.
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           {onRefreshChat && (
             <button
@@ -109,78 +149,116 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
                 }
               }}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50 shadow-2xs"
               title="Đồng bộ lại toàn bộ tin nhắn từ Supabase"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Đang tải...' : 'Làm mới tin nhắn'}
+              {isRefreshing ? 'Đang tải...' : 'Làm mới'}
             </button>
           )}
-          <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-center">
-            <Lock className="w-3.5 h-3.5 text-emerald-600" />
-            Mã hoá PII & Lưu vết SLA
+          <div className="flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+            <Lock className="w-3 h-3 text-emerald-600" />
+            <span>Chống Sửa/Xóa Tin</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-3 min-h-[580px]">
-        {/* Cột 1: Danh sách các cuộc trò chuyện thực tế */}
-        <div className={`border-r border-slate-200 bg-slate-50/70 flex flex-col h-[580px] ${
+      {/* Khung Giao Diện Kiểu Messenger: 2 Cột Trên PC - Mở Đầy Đủ Trên Điện Thoại */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100dvh-175px)] sm:h-[650px] md:h-[680px]">
+        
+        {/* =================================================================== */}
+        {/* CỘT DANH SÁCH CUỘC TRÒ CHUYỆN (HỘP THƯ ĐỐI TÁC GIỐNG ẢNH MẪU) */}
+        {/* =================================================================== */}
+        <div className={`md:col-span-5 lg:col-span-4 border-r border-slate-200 bg-slate-50/50 flex flex-col h-full overflow-hidden ${
           selectedConvoId ? 'hidden md:flex' : 'flex'
         }`}>
-          <div className="p-4 border-b border-slate-200 bg-white/80">
-            <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-              <span>Hộp Thư Đối Tác</span>
-              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
-                {myConversations.length} hội thoại
+          {/* Header Hộp thư đối tác */}
+          <div className="p-4 border-b border-slate-200/80 bg-white space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Hộp Thư Đối Tác
               </span>
+              <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full font-extrabold shadow-2xs">
+                {myConversations.length} HỘI THOẠI
+              </span>
+            </div>
+
+            {/* Thanh tìm kiếm nhanh bạn bè */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Tìm bạn học, máy tính..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-100/80 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+              />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {myConversations.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-300">
-                  <MessageSquare className="w-6 h-6" />
+          {/* Danh sách các thẻ hội thoại (Messenger Cards) */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 space-y-2.5">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-300">
+                  <MessageSquare className="w-7 h-7" />
                 </div>
-                <p className="text-xs font-bold text-slate-600">Chưa có cuộc trò chuyện nào</p>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Bấm nút <b>"Nhắn Tin Thương Lượng"</b> ở chi tiết một máy tính trên sàn để bắt đầu trò chuyện với người bán.
+                <p className="text-xs font-bold text-slate-700">Chưa có cuộc trò chuyện nào</p>
+                <p className="text-[11px] text-slate-400 leading-relaxed max-w-[200px] mx-auto">
+                  Bấm nút <b>"Nhắn Tin Thương Lượng"</b> ở một máy tính bất kỳ để kết nối với người bán.
                 </p>
               </div>
             ) : (
-              myConversations.map(convo => {
+              filteredConversations.map(convo => {
                 const isSelected = convo.id === selectedConvoId;
                 const partnerName = getPartnerDisplayName(convo);
+                const firstLetter = (partnerName || '?').charAt(0).toUpperCase();
+
                 return (
                   <div
                     key={convo.id}
                     onClick={() => setSelectedConvoId(convo.id)}
-                    className={`p-3.5 rounded-2xl transition duration-150 cursor-pointer flex items-center gap-3 border ${
+                    className={`p-3.5 rounded-[20px] transition-all duration-150 cursor-pointer flex items-center gap-3.5 border ${
                       isSelected 
-                        ? 'bg-blue-50/80 border-blue-400 shadow-xs' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'bg-blue-50/50 border-2 border-blue-500 shadow-sm' 
+                        : 'bg-white border-slate-200/90 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm text-white shadow-xs ${
-                      isSelected ? 'bg-blue-600' : 'bg-slate-500'
-                    }`}>
-                      {partnerName.charAt(0).toUpperCase()}
+                    {/* Avatar Squircle Bo Tròn Kiểu Messenger */}
+                    <div className="relative shrink-0">
+                      <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center font-black text-base text-white shadow-xs transition-colors ${
+                        isSelected 
+                          ? 'bg-blue-600 ring-2 ring-blue-300/60' 
+                          : 'bg-slate-600'
+                      }`}>
+                        {firstLetter}
+                      </div>
+                      {/* Chấm tròn xanh online */}
+                      <span className="w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full absolute -bottom-0.5 -right-0.5 shadow-xs" />
                     </div>
+
+                    {/* Nội dung tin nhắn & thông tin đối tác */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold truncate ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
+                      <div className="flex items-baseline justify-between gap-1">
+                        <span className={`text-sm font-bold truncate ${
+                          isSelected ? 'text-blue-900 font-extrabold' : 'text-slate-900'
+                        }`}>
                           {partnerName}
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[11px] text-slate-400 shrink-0 font-medium">
                           {new Date(convo.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                        {convo.lastMessage || convo.productTitle}
+
+                      <p className={`text-xs truncate mt-0.5 ${
+                        isSelected ? 'text-blue-800/80 font-medium' : 'text-slate-500'
+                      }`}>
+                        {convo.lastMessage || 'Đã bắt đầu cuộc trò chuyện'}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1 text-[10px] text-indigo-600 font-semibold truncate">
-                        <ShoppingBag className="w-3 h-3 shrink-0" />
+
+                      {/* Huy hiệu máy tính đang trao đổi */}
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-indigo-600 font-semibold truncate">
+                        <ShoppingBag className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
                         <span className="truncate">{convo.productTitle}</span>
                       </div>
                     </div>
@@ -191,97 +269,126 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
           </div>
         </div>
 
-        {/* Cột 2: Khung chat chi tiết */}
-        <div className={`md:col-span-2 flex flex-col h-[580px] bg-white ${
+        {/* =================================================================== */}
+        {/* CỘT CHI TIẾT ĐOẠN CHAT (MESSENGER CHAT ROOM) */}
+        {/* =================================================================== */}
+        <div className={`md:col-span-7 lg:col-span-8 flex flex-col h-full overflow-hidden bg-white ${
           !selectedConvoId ? 'hidden md:flex' : 'flex'
         }`}>
           {activeConvo ? (
             <>
-              {/* Header hội thoại */}
-              <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+              {/* Header Khung Chat Messenger */}
+              <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {/* Nút quay lại danh sách cuộc trò chuyện trên mobile */}
+                  {/* Nút quay lại danh sách trên mobile */}
                   <button
                     onClick={() => setSelectedConvoId(null)}
-                    className="md:hidden p-1.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shrink-0"
-                    title="Quay lại danh sách"
+                    className="md:hidden p-2 -ml-1 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition shrink-0"
+                    title="Quay lại danh sách tin nhắn"
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-blue-600 text-white font-black flex items-center justify-center shadow-xs shrink-0 text-sm">
-                    {getPartnerDisplayName(activeConvo).charAt(0).toUpperCase()}
+                  <div className="relative shrink-0">
+                    <div className="w-10 h-10 rounded-[16px] bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center shadow-xs text-sm">
+                      {getPartnerDisplayName(activeConvo).charAt(0).toUpperCase()}
+                    </div>
+                    <span className="w-3 h-3 bg-emerald-500 border-2 border-white rounded-full absolute -bottom-0.5 -right-0.5 shadow-xs" />
                   </div>
+
                   <div className="min-w-0">
-                    <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
+                    <h3 className="font-extrabold text-slate-900 text-sm truncate leading-tight">
                       {getPartnerDisplayName(activeConvo)}
                     </h3>
-                    <span className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold flex items-center gap-1 truncate">
-                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> Học Sinh Đã Xác Thực
-                    </span>
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-semibold mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                      <span>Đang hoạt động • Học sinh uy tín</span>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onScheduleMeet(activeConvo.productId)}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-600/20 flex items-center gap-1.5"
+                  className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-md shadow-blue-500/20 flex items-center gap-1.5 shrink-0"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  Hẹn Gặp Trực Tiếp
+                  <span className="hidden xs:inline sm:inline">Hẹn Gặp Trực Tiếp</span>
+                  <span className="xs:hidden sm:hidden">Hẹn Gặp</span>
                 </button>
               </div>
 
-              {/* Banner sản phẩm đang thương lượng */}
-              <div className="px-4 py-2.5 bg-blue-50/70 border-b border-blue-100 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 truncate">
-                  <img 
-                    src={activeConvo.productImage} 
-                    alt="" 
-                    className="w-8 h-8 rounded-lg object-cover border border-blue-200 shrink-0" 
-                  />
-                  <span className="text-slate-700 truncate">
-                    Máy đang trao đổi: <b className="text-slate-900">{activeConvo.productTitle}</b>
+              {/* Banner Máy Tính Đang Thương Lượng (Ghim Ở Đầu Tin Nhắn) */}
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5 truncate">
+                  {activeConvo.productImage ? (
+                    <img 
+                      src={activeConvo.productImage} 
+                      alt="" 
+                      className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" 
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <span className="text-slate-500 text-[10px] block">Đang thương lượng về máy:</span>
+                    <span className="text-slate-900 font-bold truncate block">{activeConvo.productTitle}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <span className="font-extrabold text-blue-600 text-sm block">
+                    {activeConvo.productPrice.toLocaleString('vi-VN')} đ
                   </span>
                 </div>
-                <span className="font-extrabold text-blue-700 shrink-0 ml-3">
-                  {activeConvo.productPrice.toLocaleString('vi-VN')} đ
-                </span>
               </div>
 
-              {/* Danh sách tin nhắn */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/30">
-                <div className="text-center my-2">
-                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                    <Lock className="w-3 h-3 text-indigo-500" /> Biên bản chat được ghi nhận an toàn & không thể xóa/sửa
+              {/* Luồng Tin Nhắn Kiểu Bong Bóng Messenger */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/40">
+                <div className="text-center my-1">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-200/70 px-3 py-1 rounded-full font-medium">
+                    <Lock className="w-3 h-3 text-indigo-600" /> Biên bản chat được ghi nhận an toàn và không thể thu hồi
                   </span>
                 </div>
 
                 {activeMessages.length === 0 ? (
                   <div className="py-16 text-center text-slate-400 space-y-2">
-                    <Sparkles className="w-8 h-8 text-blue-400 mx-auto" />
-                    <p className="text-xs font-bold text-slate-700">Chưa có tin nhắn nào trong hội thoại này</p>
-                    <p className="text-[11px] text-slate-400">
-                      Gửi tin nhắn đầu tiên để chào bạn và hẹn giờ ra chơi hoặc thỏa thuận giá máy nhé!
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-xs">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-800">Bắt đầu cuộc trò chuyện với {getPartnerDisplayName(activeConvo)}</p>
+                    <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                      Gửi lời chào hoặc chọn câu hỏi mẫu bên dưới để hỏi về tình trạng máy tính và hẹn gặp!
                     </p>
                   </div>
                 ) : (
                   activeMessages.map(msg => {
-                    const isMine = msg.senderId === currentUserId || (currentUser?.displayName && msg.senderDisplayName === currentUser.displayName);
+                    const isMine = (msg.senderId && msg.senderId.toLowerCase() === currentUserId) || 
+                                   (currentUser?.displayName && msg.senderDisplayName?.toLowerCase().trim() === currentUserName);
+
                     return (
                       <div 
                         key={msg.id}
-                        className={`flex flex-col ${isMine ? 'items-end ml-auto' : 'items-start'} max-w-[80%]`}
+                        className={`flex flex-col ${isMine ? 'items-end ml-auto' : 'items-start'} max-w-[82%] sm:max-w-[72%]`}
                       >
-                        <span className="text-[10px] text-slate-400 mb-0.5 px-2">
-                          {isMine ? 'Bạn' : msg.senderDisplayName} • {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <div className={`p-3 rounded-2xl text-xs leading-relaxed shadow-2xs break-words ${
+                        {!isMine && (
+                          <span className="text-[10px] font-bold text-slate-500 mb-0.5 px-2">
+                            {msg.senderDisplayName}
+                          </span>
+                        )}
+
+                        <div className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-2xs break-words ${
                           isMine 
-                            ? 'bg-blue-600 text-white rounded-tr-xs' 
-                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-xs' 
+                            : 'bg-white border border-slate-200/90 text-slate-800 rounded-bl-xs'
                         }`}>
                           {msg.messageText}
                         </div>
+
+                        <span className="text-[10px] text-slate-400 mt-0.5 px-1.5 flex items-center gap-1">
+                          {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                          {isMine && <CheckCheck className="w-3 h-3 text-blue-500" />}
+                        </span>
                       </div>
                     );
                   })
@@ -289,33 +396,60 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Ô nhập tin nhắn */}
-              <form onSubmit={handleSend} className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Nhập tin nhắn thương lượng giá hoặc hẹn điểm gặp tại trường..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  className="flex-1 px-4 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Gợi Ý Câu Hỏi Nhanh (Quick Action Chips) */}
+              <div className="px-3 py-1.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {quickReplies.map((reply, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSend(reply)}
+                    className="whitespace-nowrap px-3 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-[11px] font-semibold border border-slate-200 transition shrink-0"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+
+              {/* Thanh Nhập Tin Nhắn Bo Tròn Viên Thuốc Chuẩn Messenger */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }} 
+                className="p-2.5 sm:p-3 border-t border-slate-200 bg-white flex items-center gap-2"
+              >
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Nhập tin nhắn..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2.5 text-xs sm:text-sm bg-slate-100/90 border-none rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  />
+                  <span className="absolute right-3 text-slate-400 pointer-events-none">
+                    <Smile className="w-4 h-4" />
+                  </span>
+                </div>
+
                 <button
                   type="submit"
                   disabled={!inputMessage.trim()}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center gap-1"
+                  className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white flex items-center justify-center transition shadow-md shadow-blue-500/30 shrink-0 cursor-pointer"
+                  title="Gửi tin nhắn"
                 >
-                  <Send className="w-4 h-4" />
-                  Gửi
+                  <Send className="w-4 h-4 ml-0.5" />
                 </button>
               </form>
             </>
           ) : (
+            /* Trạng Thái Trống Khi Chưa Chọn Hội Thoại Nào Trên Màn Hình Lớn */
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-3">
-              <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
                 <MessageSquare className="w-8 h-8" />
               </div>
-              <h3 className="font-extrabold text-slate-800 text-base">Chọn một cuộc trò chuyện</h3>
-              <p className="text-xs text-slate-500 max-w-sm">
-                Chọn người bán ở danh sách bên trái hoặc bấm "Nhắn Tin Thương Lượng" trên bất kỳ máy tính nào ở Chợ Máy Tính để bắt đầu.
+              <h3 className="font-extrabold text-slate-800 text-base">Chọn một cuộc trò chuyện để xem tin nhắn</h3>
+              <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                Bấm vào một người bạn ở cột bên trái để tiếp tục thương lượng hoặc giải đáp thắc mắc về máy tính Casio.
               </p>
             </div>
           )}
@@ -324,4 +458,5 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
     </div>
   );
 };
+
 
