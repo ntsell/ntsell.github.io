@@ -9,7 +9,8 @@ import {
   Sparkles,
   ShoppingBag,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft
 } from 'lucide-react';
 import { ChatMessage, Conversation, UserProfile } from '../types';
 
@@ -124,7 +125,9 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-3 min-h-[580px]">
         {/* Cột 1: Danh sách các cuộc trò chuyện thực tế */}
-        <div className="border-r border-slate-200 bg-slate-50/70 flex flex-col h-[580px]">
+        <div className={`border-r border-slate-200 bg-slate-50/70 flex flex-col h-[580px] ${
+          selectedConvoId ? 'hidden md:flex' : 'flex'
+        }`}>
           <div className="p-4 border-b border-slate-200 bg-white/80">
             <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
               <span>Hộp Thư Đối Tác</span>
@@ -189,21 +192,32 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
         </div>
 
         {/* Cột 2: Khung chat chi tiết */}
-        <div className="md:col-span-2 flex flex-col h-[580px] bg-white">
+        <div className={`md:col-span-2 flex flex-col h-[580px] bg-white ${
+          !selectedConvoId ? 'hidden md:flex' : 'flex'
+        }`}>
           {activeConvo ? (
             <>
               {/* Header hội thoại */}
-              <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-black flex items-center justify-center shadow-xs">
+              <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Nút quay lại danh sách cuộc trò chuyện trên mobile */}
+                  <button
+                    onClick={() => setSelectedConvoId(null)}
+                    className="md:hidden p-1.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shrink-0"
+                    title="Quay lại danh sách"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-blue-600 text-white font-black flex items-center justify-center shadow-xs shrink-0 text-sm">
                     {getPartnerDisplayName(activeConvo).charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 text-sm">
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
                       {getPartnerDisplayName(activeConvo)}
                     </h3>
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Học Sinh Đã Xác Thực
+                    <span className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold flex items-center gap-1 truncate">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> Học Sinh Đã Xác Thực
                     </span>
                   </div>
                 </div>

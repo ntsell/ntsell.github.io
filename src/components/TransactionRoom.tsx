@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ExternalLink,
   Lock,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 import { Transaction, Dispute } from '../types';
 import confetti from 'canvas-confetti';
@@ -103,7 +104,7 @@ export const TransactionRoom: React.FC<TransactionRoomProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cột trái: Danh sách giao dịch */}
-        <div className="space-y-3">
+        <div className={`space-y-3 ${selectedTxId ? 'hidden lg:block' : 'block'}`}>
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
             Giao Dịch Của Bạn ({transactions.length})
           </h2>
@@ -141,18 +142,27 @@ export const TransactionRoom: React.FC<TransactionRoomProps> = ({
         </div>
 
         {/* Cột phải: Chi tiết giao dịch & Bằng chứng video */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={`lg:col-span-2 space-y-4 ${!selectedTxId ? 'hidden lg:block' : 'block'}`}>
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Header chi tiết */}
-            <div className="p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] uppercase font-bold text-indigo-600 tracking-wider">Mã GD #{selectedTx.id}</span>
-                <h3 className="text-base font-bold text-slate-900">{selectedTx.productTitle}</h3>
+            <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  onClick={() => setSelectedTxId(null)}
+                  className="lg:hidden p-1.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shrink-0"
+                  title="Danh sách giao dịch"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div className="min-w-0">
+                  <span className="text-[10px] sm:text-[11px] uppercase font-bold text-indigo-600 tracking-wider">Mã GD #{selectedTx.id}</span>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">{selectedTx.productTitle}</h3>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onOpenChat(selectedTx.productId)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                   Xem Biên Bản Chat

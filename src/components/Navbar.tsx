@@ -73,14 +73,15 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'wiki', label: 'Quyền Lợi & Điều Khoản', icon: FileText, iconColor: 'text-slate-500' },
   ];
 
-  // Danh mục tab Mobile dưới đáy
+  // Danh mục tab Mobile dưới đáy - Đầy đủ mọi chức năng, không thiếu mục nào
   const mobileNavItems = [
     { id: 'home', label: 'Chợ máy', icon: Calculator },
     { id: 'create_post', label: 'Đăng bán', icon: PlusCircle },
-    ...(currentUser?.role === 'admin' ? [{ id: 'admin', label: 'Quản trị', icon: HardDrive }] : []),
-    { id: 'transactions', label: 'Giao dịch', icon: ShieldCheck },
     { id: 'chat', label: 'Tin nhắn', icon: MessageSquare },
+    { id: 'transactions', label: 'Giao dịch', icon: ShieldCheck },
     { id: 'dashboard', label: 'Cá nhân', icon: User },
+    ...(currentUser?.role === 'admin' ? [{ id: 'admin', label: 'Quản trị', icon: HardDrive }] : []),
+    { id: 'more', label: 'Thêm', icon: Sparkles },
   ];
 
   // Particle Shatter & Regroup Animation State
@@ -103,8 +104,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [regroupTab, setRegroupTab] = React.useState<string | null>(null);
   const mobileBarRef = React.useRef<HTMLDivElement>(null);
   const mobileTabRefs = React.useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = React.useState(false);
 
   const handleMobileTabClick = (tabId: string) => {
+    if (tabId === 'more') {
+      setIsMoreMenuOpen(prev => !prev);
+      return;
+    }
+    setIsMoreMenuOpen(false);
     if (tabId === currentTab) return;
 
     const sourceEl = mobileTabRefs.current[currentTab];
@@ -300,7 +307,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [currentTab]);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-xs">
+    <>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Tên nền tảng */}
@@ -580,74 +588,138 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation with Particle Shatter & Regroup Animation */}
-      <div 
-        ref={mobileBarRef}
-        className="md:hidden relative flex border-t border-slate-200 bg-white/95 backdrop-blur justify-around py-2.5 px-1 text-[11px] select-none overflow-hidden"
-      >
-        {/* Lớp hạt tan vỡ bay qua tab được chọn (Particle Shatter & Fly Layer) */}
-        {particles.map(p => (
-          <span
-            key={p.id}
-            className="tab-particle"
-            style={{
-              left: `${p.startX}px`,
-              top: `${p.startY}px`,
-              width: `${p.size}px`,
-              height: `${p.size}px`,
-              backgroundColor: p.color,
-              // Truyền biến vị trí đích, lực văng, độ cong và độ trễ bay từng hạt
-              ['--target-dx' as any]: `${p.targetDx}px`,
-              ['--target-dy' as any]: `${p.targetDy}px`,
-              ['--scatter-x' as any]: `${p.scatterX}px`,
-              ['--scatter-y' as any]: `${p.scatterY}px`,
-              ['--arc-y' as any]: `${p.arcY}px`,
-              ['--fly-delay' as any]: `${p.flyDelay}s`,
-            }}
-          />
-        ))}
-
-        {mobileNavItems.map((item) => {
-          // Tab chỉ active nếu là currentTab VÀ KHÔNG trong quá trình vừa nổ tan biến
-          const isShatteringThis = shatteredSourceTab === item.id;
-          const isActive = currentTab === item.id && !isShatteringThis;
-          const isRegrouping = regroupTab === item.id;
-          const Icon = item.icon;
-
-          return (
-            <button
-              key={item.id}
-              ref={(el) => { mobileTabRefs.current[item.id] = el; }}
-              onClick={() => handleMobileTabClick(item.id)}
-              className={`flex flex-col items-center gap-1 transition-all duration-150 ${
-                isActive ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <div 
-                className={`relative p-1 rounded-lg transition-all ${
-                  isActive ? 'bg-blue-100 text-blue-600 shadow-xs' : ''
-                } ${isShatteringThis ? 'tab-shatter-vanish' : ''} ${isRegrouping ? 'tab-regroup-snap' : ''}`}
-              >
-                <Icon className="w-5 h-5" />
-                {item.id === 'admin' && pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white animate-bounce">
-                    {pendingCount > 9 ? '9+' : pendingCount}
-                  </span>
-                )}
-                {item.id === 'chat' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-600 rounded-full border border-white animate-pulse" />
-                )}
-                {item.id === 'dashboard' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </div>
-              <span className="leading-tight">{item.label}</span>
-            </button>
-          );
-        })}
+      {/* Mobile Broadcast Banner (Hiện dưới thanh header trên mobile) */}
+      <div className="lg:hidden border-t border-slate-100 bg-slate-50/50 py-1 px-2 flex items-center justify-center">
+        <BroadcastDotBanner />
       </div>
     </header>
+
+    {/* Mobile More Menu Drawer Sheet */}
+    {isMoreMenuOpen && (
+      <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div 
+          className="absolute inset-0"
+          onClick={() => setIsMoreMenuOpen(false)}
+        />
+        <div className="relative bg-white rounded-t-3xl border-t border-slate-200 p-5 shadow-2xl space-y-4 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto" />
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-slate-900">Mục Khác & Hướng Dẫn</h4>
+            <button 
+              onClick={() => setIsMoreMenuOpen(false)}
+              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 pt-1">
+            <button
+              onClick={() => {
+                setCurrentTab('video_guide');
+                setIsMoreMenuOpen(false);
+              }}
+              className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition ${
+                currentTab === 'video_guide' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50/80 border-slate-200/80 text-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Video className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-900">Quy Trình Video 5 Bước</p>
+                <p className="text-[11px] text-slate-500 truncate">Quy định quay video bằng chứng khi giao dịch offline</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentTab('wiki');
+                setIsMoreMenuOpen(false);
+              }}
+              className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition ${
+                currentTab === 'wiki' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50/80 border-slate-200/80 text-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-900">Quyền Lợi & Điều Khoản</p>
+                <p className="text-[11px] text-slate-500 truncate">Quy chế miễn trừ trách nhiệm và an toàn học sinh</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Mobile Fixed Bottom App Navigation Bar */}
+    <nav
+      ref={mobileBarRef}
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200/80 bg-white/95 backdrop-blur-md justify-around py-2 px-1 text-[11px] select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(env(safe-area-inset-bottom)+8px)]"
+    >
+      {/* Lớp hạt tan vỡ bay qua tab được chọn (Particle Shatter & Fly Layer) */}
+      {particles.map(p => (
+        <span
+          key={p.id}
+          className="tab-particle"
+          style={{
+            left: `${p.startX}px`,
+            top: `${p.startY}px`,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            backgroundColor: p.color,
+            ['--target-dx' as any]: `${p.targetDx}px`,
+            ['--target-dy' as any]: `${p.targetDy}px`,
+            ['--scatter-x' as any]: `${p.scatterX}px`,
+            ['--scatter-y' as any]: `${p.scatterY}px`,
+            ['--arc-y' as any]: `${p.arcY}px`,
+            ['--fly-delay' as any]: `${p.flyDelay}s`,
+          }}
+        />
+      ))}
+
+      {mobileNavItems.map((item) => {
+        const isShatteringThis = shatteredSourceTab === item.id;
+        const isActive = (currentTab === item.id || (item.id === 'more' && (currentTab === 'video_guide' || currentTab === 'wiki' || isMoreMenuOpen))) && !isShatteringThis;
+        const isRegrouping = regroupTab === item.id;
+        const Icon = item.icon;
+
+        return (
+          <button
+            key={item.id}
+            ref={(el) => { mobileTabRefs.current[item.id] = el; }}
+            onClick={() => handleMobileTabClick(item.id)}
+            className={`flex flex-col items-center gap-0.5 transition-all duration-150 flex-1 max-w-[68px] ${
+              isActive ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <div 
+              className={`relative p-1.5 rounded-xl transition-all ${
+                isActive ? 'bg-blue-100 text-blue-600 shadow-xs' : ''
+              } ${isShatteringThis ? 'tab-shatter-vanish' : ''} ${isRegrouping ? 'tab-regroup-snap' : ''}`}
+            >
+              <Icon className="w-5 h-5" />
+              {item.id === 'admin' && pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white animate-bounce">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
+              {item.id === 'chat' && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-600 rounded-full border border-white animate-pulse" />
+              )}
+              {item.id === 'dashboard' && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] leading-tight truncate">{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  </>
   );
 };

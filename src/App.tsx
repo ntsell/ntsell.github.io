@@ -711,7 +711,7 @@ export function App() {
       />
 
       {/* Main Content View with Smooth Tab Transitions */}
-      <main className="flex-1 pb-16">
+      <main className="flex-1 pb-24 md:pb-16">
         <div key={currentTab} className="tab-content-enter">
           {currentTab === 'home' && (
             <MarketplaceHome

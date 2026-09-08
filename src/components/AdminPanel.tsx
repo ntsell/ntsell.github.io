@@ -193,67 +193,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* Tab Menu */}
-      <div className="flex border-b border-slate-200 text-xs font-bold gap-2">
+      {/* Tab Menu - Cuộn ngang mượt mà trên điện thoại */}
+      <div className="flex border-b border-slate-200 text-xs font-bold gap-1.5 overflow-x-auto whitespace-nowrap pb-px no-scrollbar">
         <button
           onClick={() => setActiveTab('products')}
-          className={`py-3 px-4 border-b-2 transition ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition ${
             activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Duyệt Bài Đăng Chờ Duyệt ({pendingProducts.length})
+          Duyệt Bài Đăng ({pendingProducts.length})
         </button>
 
         <button
           onClick={() => setActiveTab('active_products')}
-          className={`py-3 px-4 border-b-2 transition ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition ${
             activeTab === 'active_products' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Máy Đang Treo Trên Sàn ({activeProducts.length})
+          Máy Đang Treo ({activeProducts.length})
         </button>
 
         <button
           onClick={() => setActiveTab('disputes')}
-          className={`py-3 px-4 border-b-2 transition ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition ${
             activeTab === 'disputes' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Xử Lý Khiếu Nại & Tranh Chấp ({disputes.length})
+          Khiếu Nại ({disputes.length})
         </button>
 
         <button
           onClick={() => setActiveTab('storage')}
-          className={`py-3 px-4 border-b-2 transition ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition ${
             activeTab === 'storage' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Quản Lý Google Drive (5TB) & Auto-Delete 6 Tháng
+          Drive 5TB
         </button>
 
         <button
           onClick={() => setActiveTab('roster')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition flex items-center gap-1.5 ${
             activeTab === 'roster' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          Yêu Cầu Xác Minh Tài Khoản ({pendingRequests.length})
+          Xác Minh ({pendingRequests.length})
         </button>
 
         <button
           onClick={() => setActiveTab('users')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition flex items-center gap-1.5 ${
             activeTab === 'users' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          Quản Lý Tài Khoản
+          Tài Khoản
         </button>
 
         <button
           onClick={() => setActiveTab('broadcast')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition flex items-center gap-1.5 ${
             activeTab === 'broadcast' ? 'border-amber-600 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -263,12 +263,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         <button
           onClick={() => setActiveTab('sessions')}
-          className={`py-3 px-4 border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition flex items-center gap-1.5 ${
             activeTab === 'sessions' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Laptop className="w-3.5 h-3.5" />
-          Quản Lý Phiên Thiết Bị (Sessions)
+          Phiên Thiết Bị
         </button>
       </div>
 
