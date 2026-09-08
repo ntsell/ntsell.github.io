@@ -65,8 +65,9 @@ export const BroadcastDotBanner: React.FC<BroadcastDotBannerProps> = ({ initialA
     }
 
     // 3. Lắng nghe Supabase Realtime (cho nhiều máy/thiết bị khác nhau)
+    const channelName = `realtime_broadcast_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel('realtime_broadcast_announcements')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'broadcast_announcements' },
@@ -86,7 +87,9 @@ export const BroadcastDotBanner: React.FC<BroadcastDotBannerProps> = ({ initialA
 
     return () => {
       if (bc) bc.close();
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch {}
     };
   }, []);
 
