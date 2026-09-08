@@ -211,6 +211,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
 
       {/* Thanh tìm kiếm & bộ lọc đa tiêu chí */}
       <div id="filters" className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-300 p-4 sm:p-5 shadow-xl shadow-slate-900/10 space-y-3">
+        {/* Dòng tìm kiếm full width */}
         <div className="relative w-full">
           <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -222,7 +223,8 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        {/* Dòng bộ lọc 3 cột cân đối full width */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full">
           {/* Filter Model */}
           <div className="relative w-full">
             <select
