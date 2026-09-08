@@ -62,7 +62,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       {/* Profile Header */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/85 p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-2xl shadow-md">
             {currentUser.displayName.charAt(0).toUpperCase()}
@@ -101,7 +101,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           )}
           <button
             onClick={() => setIsEditingName(true)}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+            className="px-4 py-2 bg-white/70 hover:bg-white text-slate-700 font-semibold text-xs rounded-xl border border-white/80 transition shadow-2xs"
           >
             Đổi Tên Hiển Thị (Display Name)
           </button>
@@ -110,7 +110,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
       {/* Modal đổi tên hiển thị với Gemini 2.5 Moderation */}
       {isEditingName && (
-        <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 animate-in fade-in duration-200">
+        <div className="bg-white/80 backdrop-blur-xl border border-blue-200/80 rounded-2xl p-4 shadow-lg animate-in fade-in duration-200">
           <form onSubmit={handleSaveName} className="space-y-3 max-w-md">
             <h3 className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-indigo-600" />
@@ -121,25 +121,26 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               required
               value={newDisplayName}
               onChange={(e) => setNewDisplayName(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white"
+              placeholder="Nhập tên mới..."
+              className="w-full px-3 py-2 text-xs rounded-xl border border-white/80 bg-white/70 backdrop-blur-md focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
             {modError && (
-              <p className="text-xs text-rose-600 font-medium flex items-center gap-1">
+              <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" /> {modError}
               </p>
             )}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="submit"
                 disabled={isChecking}
-                className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl"
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
               >
-                {isChecking ? 'Gemini đang duyệt...' : 'Lưu Thay Đổi'}
+                {isChecking ? 'Đang kiểm duyệt...' : 'Lưu Tên'}
               </button>
               <button
                 type="button"
                 onClick={() => setIsEditingName(false)}
-                className="px-4 py-2 bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl"
+                className="px-4 py-1.5 bg-white/60 hover:bg-white text-slate-600 text-xs font-semibold rounded-xl border border-white/70"
               >
                 Hủy
               </button>
@@ -150,7 +151,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
       {/* Thống kê Trust Score & Lịch sử */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white/75 backdrop-blur-xl p-5 rounded-2xl border border-white/85 shadow-lg shadow-slate-900/5">
           <span className="text-xs text-slate-500 font-medium">Điểm Uy Tín (Trust Score)</span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-3xl font-extrabold text-emerald-600">{currentUser.trustScore}</span>
@@ -159,7 +160,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           <p className="text-[11px] text-slate-500 mt-2">Dựa trên giao dịch hoàn tất có video đầy đủ và không bị báo cáo.</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white/75 backdrop-blur-xl p-5 rounded-2xl border border-white/85 shadow-lg shadow-slate-900/5">
           <span className="text-xs text-slate-500 font-medium">Giao Dịch Đã Hoàn Tất</span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-3xl font-extrabold text-blue-600">{myTransactions.length}</span>
@@ -168,7 +169,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           <p className="text-[11px] text-slate-500 mt-2">Đã nghiệm thu qua video 5 bước trực tiếp.</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="bg-white/75 backdrop-blur-xl p-5 rounded-2xl border border-white/85 shadow-lg shadow-slate-900/5">
           <span className="text-xs text-slate-500 font-medium">Sản Phẩm Đang Đăng Bán</span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-3xl font-extrabold text-indigo-600">{myProducts.length}</span>
@@ -179,7 +180,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       </div>
 
       {/* Trực quan hóa bảo mật PII & Mã hóa AES-256 đối xứng */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-2xs">
+      <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/85 p-6 space-y-4 shadow-lg shadow-slate-900/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
@@ -196,7 +197,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div className="p-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 space-y-1">
             <span className="text-[11px] text-slate-400 font-sans block">Họ Tên Thật (Mã hoá):</span>
             <p className="font-bold text-slate-800 truncate" title={currentUser.encryptedRealName}>
               {currentUser.encryptedRealName}
@@ -206,7 +207,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div className="p-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 space-y-1">
             <span className="text-[11px] text-slate-400 font-sans block">Lớp Học (Mã hoá):</span>
             <p className="font-bold text-slate-800 truncate" title={currentUser.encryptedClassName}>
               {currentUser.encryptedClassName}
@@ -216,7 +217,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div className="p-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 space-y-1">
             <span className="text-[11px] text-slate-400 font-sans block">Username Hệ Thống (Mã hoá):</span>
             <p className="font-bold text-slate-800 truncate" title={currentUser.encryptedUsername}>
               {currentUser.encryptedUsername}
@@ -229,8 +230,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       </div>
 
       {/* Quản lý danh sách máy tính đăng bán & Trạng thái duyệt */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-2xs">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/85 p-6 space-y-4 shadow-lg shadow-slate-900/5">
+        <div className="flex items-center justify-between border-b border-white/60 pb-3">
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-sm">Danh Sách Máy Tính Của Bạn ({myProducts.length})</h3>
@@ -239,7 +240,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
 
         {myProducts.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+          <div className="p-8 text-center bg-white/50 backdrop-blur-sm rounded-2xl border border-white/70 space-y-1">
             <p className="text-xs font-bold text-slate-600">Bạn chưa đăng bán chiếc máy tính nào</p>
             <p className="text-[11px] text-slate-400">Hãy vào mục "Đăng Bán Máy" để gửi yêu cầu bán máy tính Casio / Flexio.</p>
           </div>
@@ -253,7 +254,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               const isFlagged = p.status === 'flagged';
 
               return (
-                <div key={p.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col space-y-3">
+                <div key={p.id} className="p-4 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex flex-col space-y-3 shadow-2xs">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <img src={p.imageUrls[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />

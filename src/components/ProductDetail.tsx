@@ -46,15 +46,15 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
       {/* Nút quay lại */}
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition shadow-2xs"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white/75 backdrop-blur-xl border border-white/85 px-3.5 py-2 rounded-xl transition shadow-sm hover:bg-white"
       >
         <ArrowLeft className="w-4 h-4" />
         Quay lại chợ máy
       </button>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2">
+      <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/85 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
         {/* Cột trái: Gallery 4 ảnh hoặc Mô hình 3D 360° */}
-        <div className="p-6 space-y-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50">
+        <div className="p-6 space-y-4 border-b md:border-b-0 md:border-r border-white/60 bg-white/40 backdrop-blur-md">
           {/* Bộ chuyển đổi: Ảnh chụp thực tế vs Mô hình 3D */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl">
             <button

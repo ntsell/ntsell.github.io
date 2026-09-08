@@ -62,7 +62,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Banner thông báo phê duyệt dành riêng cho Admin */}
       {currentUser?.role === 'admin' && (
-        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-indigo-50 border-2 border-amber-300 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+        <div className="bg-white/75 backdrop-blur-xl border border-white/85 rounded-3xl p-4 sm:p-5 shadow-lg shadow-amber-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25">
               <ShieldCheck className="w-6 h-6" />
@@ -152,7 +152,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
       {/* Dải 4 Thẻ Tính Năng Chiều Sâu 3D Tương Tác */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <Card3DTilt maxTilt={14} className="h-full">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/75 backdrop-blur-xl border border-white/85 shadow-lg shadow-slate-900/5 hover:bg-white/90 hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-2xs">
               🧮
             </div>
@@ -166,7 +166,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         </Card3DTilt>
 
         <Card3DTilt maxTilt={14} className="h-full">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/75 backdrop-blur-xl border border-white/85 shadow-lg shadow-slate-900/5 hover:bg-white/90 hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
             <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-lg shadow-2xs">
               🛡️
             </div>
@@ -180,7 +180,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         </Card3DTilt>
 
         <Card3DTilt maxTilt={14} className="h-full">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/75 backdrop-blur-xl border border-white/85 shadow-lg shadow-slate-900/5 hover:bg-white/90 hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-lg shadow-2xs">
               📹
             </div>
@@ -194,7 +194,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
         </Card3DTilt>
 
         <Card3DTilt maxTilt={14} className="h-full">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/75 backdrop-blur-xl border border-white/85 shadow-lg shadow-slate-900/5 hover:bg-white/90 hover:shadow-xl transition flex flex-col justify-between h-full space-y-2.5">
             <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-black text-lg shadow-2xs">
               💬
             </div>
@@ -209,7 +209,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
       </div>
 
       {/* Thanh tìm kiếm & bộ lọc đa tiêu chí */}
-      <div id="filters" className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-5 shadow-xs space-y-3">
+      <div id="filters" className="bg-white/75 backdrop-blur-2xl rounded-2xl border border-white/85 p-3.5 sm:p-5 shadow-lg shadow-slate-900/5 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -218,7 +218,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               placeholder="Tìm theo tên máy, mã S/N, model Casio hoặc Flexio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-white/80 bg-white/60 backdrop-blur-md focus:bg-white/95 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
@@ -226,7 +226,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
             >
               <option value="ALL">Tất cả Model</option>
               <option value="FX-580VN">Casio FX-580VN X</option>
@@ -238,7 +238,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <select
               value={selectedCondition}
               onChange={(e) => setSelectedCondition(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
             >
               <option value="ALL">Tất cả tình trạng</option>
               <option value="brand_new">Mới tinh (Chưa dùng)</option>
@@ -249,7 +249,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <select
               value={priceSort}
               onChange={(e) => setPriceSort(e.target.value as any)}
-              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white"
+              className="w-full min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-white/80 bg-white/70 backdrop-blur-md shadow-2xs"
             >
               <option value="default">Mới nhất</option>
               <option value="asc">Giá: Thấp đến Cao</option>
@@ -261,7 +261,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
 
       {/* Grid danh sách máy tính hoặc Trạng thái trống */}
       {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center max-w-lg mx-auto shadow-xs space-y-4 my-6">
+        <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/85 p-12 text-center max-w-lg mx-auto shadow-xl space-y-4 my-6">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
             <Tag className="w-8 h-8" />
           </div>
@@ -284,7 +284,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             <Card3DTilt key={product.id} className="h-full">
               <div
                 onClick={() => onSelectProduct(product)}
-                className="group h-full bg-white rounded-3xl border border-slate-200 overflow-hidden hover:shadow-2xl transition duration-200 cursor-pointer flex flex-col"
+                className="group h-full bg-white/75 backdrop-blur-xl rounded-3xl border border-white/85 overflow-hidden hover:bg-white/90 hover:border-white shadow-lg shadow-slate-900/5 hover:shadow-2xl transition duration-200 cursor-pointer flex flex-col"
                 style={{ transformStyle: 'preserve-3d' }}
               >
                 {/* Ảnh đại diện & Badge với chiều sâu 3D */}

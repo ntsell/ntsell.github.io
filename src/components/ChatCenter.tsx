@@ -164,16 +164,16 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
       </div>
 
       {/* Khung Giao Diện Kiểu Messenger: 2 Cột Trên PC - Mở Đầy Đủ Trên Điện Thoại */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100dvh-175px)] sm:h-[650px] md:h-[680px]">
+      <div className="bg-white/75 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-white/85 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100dvh-175px)] sm:h-[650px] md:h-[680px]">
         
         {/* =================================================================== */}
         {/* CỘT DANH SÁCH CUỘC TRÒ CHUYỆN (HỘP THƯ ĐỐI TÁC GIỐNG ẢNH MẪU) */}
         {/* =================================================================== */}
-        <div className={`md:col-span-5 lg:col-span-4 border-r border-slate-200 bg-slate-50/50 flex flex-col h-full overflow-hidden ${
+        <div className={`md:col-span-5 lg:col-span-4 border-r border-white/60 bg-white/40 backdrop-blur-xl flex flex-col h-full overflow-hidden ${
           selectedConvoId ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header Hộp thư đối tác */}
-          <div className="p-4 border-b border-slate-200/80 bg-white space-y-3">
+          <div className="p-4 border-b border-white/60 bg-white/60 backdrop-blur-md space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
                 Hộp Thư Đối Tác
@@ -278,7 +278,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
           {activeConvo ? (
             <>
               {/* Header Khung Chat Messenger */}
-              <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-white flex items-center justify-between gap-2 shadow-2xs">
+              <div className="p-3.5 sm:p-4 border-b border-white/60 bg-white/65 backdrop-blur-md flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {/* Nút quay lại danh sách trên mobile */}
                   <button
@@ -318,7 +318,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
               </div>
 
               {/* Banner Máy Tính Đang Thương Lượng (Ghim Ở Đầu Tin Nhắn) */}
-              <div className="px-4 py-2 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between text-xs">
+              <div className="px-4 py-2 bg-white/40 backdrop-blur-sm border-b border-white/60 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2.5 truncate">
                   {activeConvo.productImage ? (
                     <img 
@@ -379,8 +379,8 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
 
                         <div className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-2xs break-words ${
                           isMine 
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-xs' 
-                            : 'bg-white border border-slate-200/90 text-slate-800 rounded-bl-xs'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-xs shadow-md shadow-blue-600/20' 
+                            : 'bg-white/85 backdrop-blur-md border border-white/90 text-slate-800 rounded-bl-xs shadow-xs'
                         }`}>
                           {msg.messageText}
                         </div>
@@ -397,13 +397,13 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
               </div>
 
               {/* Gợi Ý Câu Hỏi Nhanh (Quick Action Chips) */}
-              <div className="px-3 py-1.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <div className="px-3 py-1.5 bg-white/50 backdrop-blur-md border-t border-white/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {quickReplies.map((reply, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSend(reply)}
-                    className="whitespace-nowrap px-3 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-[11px] font-semibold border border-slate-200 transition shrink-0"
+                    className="whitespace-nowrap px-3 py-1 rounded-full bg-white/70 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-[11px] font-semibold border border-white/80 transition shrink-0 shadow-2xs"
                   >
                     {reply}
                   </button>
@@ -416,7 +416,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
                   e.preventDefault();
                   handleSend();
                 }} 
-                className="p-2.5 sm:p-3 border-t border-slate-200 bg-white flex items-center gap-2"
+                className="p-2.5 sm:p-3 border-t border-white/60 bg-white/65 backdrop-blur-md flex items-center gap-2"
               >
                 <div className="flex-1 relative flex items-center">
                   <input
@@ -424,7 +424,7 @@ export const ChatCenter: React.FC<ChatCenterProps> = ({
                     placeholder="Nhập tin nhắn..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    className="w-full pl-4 pr-10 py-2.5 text-xs sm:text-sm bg-slate-100/90 border-none rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className="w-full pl-4 pr-10 py-2.5 text-xs sm:text-sm bg-white/60 backdrop-blur-sm border border-white/70 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/95 transition"
                   />
                   <span className="absolute right-3 text-slate-400 pointer-events-none">
                     <Smile className="w-4 h-4" />

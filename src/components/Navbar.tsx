@@ -308,7 +308,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-xs supports-[backdrop-filter]:bg-white/75">
+      <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-white/80 shadow-xs supports-[backdrop-filter]:bg-white/65">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Tên nền tảng */}
@@ -346,7 +346,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Nav Items với Khối Xanh Trượt Co Dãn (Stretch & Pull Elastic Indicator) */}
           <nav 
             ref={navRef} 
-            className="relative hidden md:flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 shadow-inner"
+            className="relative hidden md:flex items-center p-1 bg-white/50 backdrop-blur-md rounded-xl border border-white/70 shadow-inner"
           >
             {/* Khối nền xanh mở rộng 1 bên đến tab được chọn rồi rút ngược bên kia lại với viền sáng & bóng nịnh mắt */}
             {indicatorStyle.width > 0 && (
@@ -598,13 +598,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     {/* Mobile More Menu Drawer Sheet */}
     {isMoreMenuOpen && (
-      <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
         <div 
           className="absolute inset-0"
           onClick={() => setIsMoreMenuOpen(false)}
         />
-        <div className="relative bg-white rounded-t-3xl border-t border-slate-200 p-5 shadow-2xl space-y-4 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto" />
+        <div className="relative bg-white/80 backdrop-blur-2xl rounded-t-3xl border-t border-white/80 p-5 shadow-2xl space-y-4 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+          <div className="w-12 h-1.5 bg-slate-300/80 rounded-full mx-auto" />
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900">Mục Khác & Hướng Dẫn</h4>
             <button 
@@ -622,7 +622,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsMoreMenuOpen(false);
               }}
               className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition ${
-                currentTab === 'video_guide' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50/80 border-slate-200/80 text-slate-800 hover:bg-slate-100'
+                currentTab === 'video_guide' ? 'bg-rose-50/90 border-rose-200 text-rose-700' : 'bg-white/60 border-white/70 text-slate-800 hover:bg-white/80'
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
@@ -640,7 +640,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsMoreMenuOpen(false);
               }}
               className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition ${
-                currentTab === 'wiki' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50/80 border-slate-200/80 text-slate-800 hover:bg-slate-100'
+                currentTab === 'wiki' ? 'bg-indigo-50/90 border-indigo-200 text-indigo-700' : 'bg-white/60 border-white/70 text-slate-800 hover:bg-white/80'
               }`}
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
@@ -659,7 +659,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     {/* Mobile Fixed Bottom App Navigation Bar */}
     <nav
       ref={mobileBarRef}
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex w-full max-w-full overflow-hidden border-t border-slate-200/80 bg-white/95 backdrop-blur-md justify-around py-1.5 px-0.5 text-[11px] select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(env(safe-area-inset-bottom)+6px)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex w-full max-w-full overflow-hidden border-t border-white/80 bg-white/75 backdrop-blur-2xl justify-around py-1.5 px-0.5 text-[11px] select-none shadow-[0_-4px_25px_rgba(0,0,0,0.06)] pb-[calc(env(safe-area-inset-bottom)+6px)]"
     >
       {/* Lớp hạt tan vỡ bay qua tab được chọn (Particle Shatter & Fly Layer) */}
       {particles.map(p => (

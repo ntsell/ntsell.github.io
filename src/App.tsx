@@ -671,7 +671,15 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 flex flex-col font-sans text-slate-900">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#e9edf2] flex flex-col font-sans text-slate-900 relative">
+      {/* Lớp hạt sáng môi trường khuếch tán để hiệu ứng kính mờ (frosted glass) khúc xạ lung linh */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-blue-300/30 blur-3xl" />
+        <div className="absolute top-1/4 -right-24 w-88 h-88 rounded-full bg-indigo-300/25 blur-3xl" />
+        <div className="absolute bottom-32 left-1/5 w-96 h-96 rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute top-2/3 right-1/4 w-80 h-80 rounded-full bg-purple-200/25 blur-3xl" />
+      </div>
+
       {/* Navigation Header */}
       <Navbar
         currentTab={currentTab}
