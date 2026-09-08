@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { 
   ArrowLeft, 
   ShieldCheck, 
@@ -12,9 +12,12 @@ import {
   ChevronRight,
   Lock,
   Ban,
-  AlertTriangle
+  AlertTriangle,
+  Box
 } from 'lucide-react';
 import { Product, UserProfile } from '../types';
+
+const Calculator3DViewer = lazy(() => import('./3d/Calculator3DViewer'));
 
 interface ProductDetailProps {
   product: Product;
@@ -34,6 +37,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   onTakeDownProduct
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'photos' | '3d'>('photos');
   const [isTakeDownModalOpen, setIsTakeDownModalOpen] = useState(false);
   const [takeDownReason, setTakeDownReason] = useState('');
 
@@ -49,35 +53,75 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
       </button>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Cột trái: Gallery 4 ảnh và video */}
+        {/* Cột trái: Gallery 4 ảnh hoặc Mô hình 3D 360° */}
         <div className="p-6 space-y-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50">
-          <div className="aspect-4/3 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
-            <img
-              src={product.imageUrls[activeImageIndex]}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {product.snStatus === 'genuine' && (
-              <span className="absolute top-3 left-3 bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> S/N Chính Hãng Khớp Database
-              </span>
-            )}
+          {/* Bộ chuyển đổi: Ảnh chụp thực tế vs Mô hình 3D */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('photos')}
+              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === 'photos'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>Ảnh thực tế ({product.imageUrls.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('3d')}
+              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === '3d'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Mô hình 3D 360°</span>
+            </button>
           </div>
 
-          {/* Thumbnails 4 góc bắt buộc */}
-          <div className="grid grid-cols-4 gap-2">
-            {product.imageUrls.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImageIndex(idx)}
-                className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
-                  activeImageIndex === idx ? 'border-blue-600 shadow-xs' : 'border-slate-200 opacity-70 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
+          {viewMode === '3d' ? (
+            <Suspense fallback={
+              <div className="aspect-4/3 rounded-2xl bg-slate-900 flex flex-col items-center justify-center text-white gap-2 border border-slate-800">
+                <Sparkles className="w-6 h-6 text-sky-400 animate-spin" />
+                <span className="text-xs font-medium">Đang tải không gian 3D...</span>
+              </div>
+            }>
+              <Calculator3DViewer productTitle={product.title} />
+            </Suspense>
+          ) : (
+            <>
+              <div className="aspect-4/3 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
+                <img
+                  src={product.imageUrls[activeImageIndex]}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                {product.snStatus === 'genuine' && (
+                  <span className="absolute top-3 left-3 bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> S/N Chính Hãng Khớp Database
+                  </span>
+                )}
+              </div>
+
+              {/* Thumbnails 4 góc bắt buộc */}
+              <div className="grid grid-cols-4 gap-2">
+                {product.imageUrls.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
+                      activeImageIndex === idx ? 'border-blue-600 shadow-xs' : 'border-slate-200 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Video test nếu có */}
           {product.demoVideoUrl && (
