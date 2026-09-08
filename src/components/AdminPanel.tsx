@@ -1155,10 +1155,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>Thời gian hiển thị (Giây):</span>
-                <span className="text-indigo-600 font-extrabold">{broadcastDuration} giây (Mặc định: 10s)</span>
+                <span>Thời gian hiển thị:</span>
+                <span className="text-amber-700 font-extrabold bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                  {broadcastDuration} giây {broadcastDuration === 10 ? '(Mặc định)' : ''}
+                </span>
               </label>
               <input
                 type="range"
@@ -1167,13 +1169,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 step="5"
                 value={broadcastDuration}
                 onChange={(e) => setBroadcastDuration(Number(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer"
+                className="w-full accent-amber-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>5 giây</span>
-                <span>10 giây (khuyên dùng)</span>
-                <span>30 giây</span>
-                <span>60 giây</span>
+              {/* Các mốc thời gian bấm chọn nhanh chuẩn xác */}
+              <div className="grid grid-cols-4 sm:flex sm:items-center gap-1.5 pt-0.5">
+                {[
+                  { sec: 5, label: '5 giây' },
+                  { sec: 10, label: '10s (Chuẩn)' },
+                  { sec: 30, label: '30 giây' },
+                  { sec: 60, label: '60 giây' }
+                ].map(({ sec, label }) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => setBroadcastDuration(sec)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition text-center ${
+                      broadcastDuration === sec
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
