@@ -4,10 +4,20 @@
 // Tích hợp Client-side video/image compression & Auto-cleanup
 // ====================================================================
 
+import { supabase } from './supabaseClient';
+
 export interface UploadOptions {
   fileName: string;
   mimeType: string;
   folderCategory: 'products' | 'transaction_videos' | 'verification_proofs';
+}
+
+export interface CloudBackupItem {
+  name: string;
+  id: string;
+  sizeKB: number;
+  createdAt: string;
+  url: string;
 }
 
 export class GoogleDriveStorageService {
@@ -86,8 +96,8 @@ export class GoogleDriveStorageService {
   }
 
   /**
-   * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn) về Google Drive
-   * Chu kỳ mỗi 24 giờ 1 lần
+   * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn) lên Cloud Storage
+   * Chu kỳ mỗi 24 giờ 1 lần (Tự động lưu vào Supabase Cloud & Google Drive nếu có Webhook)
    */
   async performBackupToDrive(payload: {
     profiles?: any[];
@@ -96,7 +106,9 @@ export class GoogleDriveStorageService {
     messages?: any[];
   }): Promise<{
     success: boolean;
+    uploadedToCloud: boolean;
     uploadedToDrive: boolean;
+    cloudUrl?: string;
     fileName: string;
     sizeKB: number;
     backupTime: string;
@@ -134,7 +146,28 @@ export class GoogleDriveStorageService {
     // Cập nhật quota ước lượng
     this.usedQuotaGB += (blob.size / (1024 * 1024 * 1024));
 
-    // Thử đẩy trực tiếp lên Google Drive qua Webhook Apps Script (nếu đã cài đặt)
+    // 1. Tự động lưu thẳng vào Supabase Cloud Storage (Bucket: backups) - Không cần cấu hình phức tạp
+    let uploadedToCloud = false;
+    let cloudUrl = '';
+    try {
+      const { data: uploadRes, error: uploadErr } = await supabase.storage
+        .from('backups')
+        .upload(fileName, blob, {
+          contentType: 'application/json',
+          upsert: true
+        });
+      if (!uploadErr && uploadRes) {
+        uploadedToCloud = true;
+        const { data: pUrl } = supabase.storage.from('backups').getPublicUrl(fileName);
+        cloudUrl = pUrl.publicUrl;
+      } else if (uploadErr) {
+        console.warn('Lỗi lưu Cloud Storage:', uploadErr.message);
+      }
+    } catch (err) {
+      console.warn('Không thể kết nối Cloud Storage:', err);
+    }
+
+    // 2. Thử đẩy tiếp lên Google Drive qua Webhook Apps Script (nếu có cài đặt)
     const webhookUrl = this.getWebhookUrl();
     let uploadedToDrive = false;
     let uploadError = '';
@@ -170,19 +203,50 @@ export class GoogleDriveStorageService {
     try {
       localStorage.setItem('ntsell_last_drive_backup_time', backupTime);
       localStorage.setItem('ntsell_last_drive_backup_filename', fileName);
-      localStorage.setItem('ntsell_last_drive_backup_status', uploadedToDrive ? 'uploaded' : 'local_only');
+      localStorage.setItem('ntsell_last_drive_backup_status', uploadedToCloud || uploadedToDrive ? 'uploaded' : 'local_only');
+      if (cloudUrl) {
+        localStorage.setItem('ntsell_last_drive_backup_cloud_url', cloudUrl);
+      }
     } catch {}
 
     const driveUrl = `https://drive.google.com/drive/folders/${this.targetFolderId}`;
     return {
       success: true,
+      uploadedToCloud,
       uploadedToDrive,
+      cloudUrl,
       fileName,
       sizeKB,
       backupTime,
       driveUrl,
       error: uploadError || undefined
     };
+  }
+
+  /**
+   * Lấy danh sách các tệp sao lưu đã lưu trên Cloud Storage (Supabase)
+   */
+  async listCloudBackups(): Promise<CloudBackupItem[]> {
+    try {
+      const { data, error } = await supabase.storage
+        .from('backups')
+        .list('', { sortBy: { column: 'created_at', order: 'desc' } });
+      if (error || !data) return [];
+      return data
+        .filter(item => item.name.endsWith('.json'))
+        .map(item => {
+          const { data: pUrl } = supabase.storage.from('backups').getPublicUrl(item.name);
+          return {
+            name: item.name,
+            id: item.id || item.name,
+            sizeKB: Math.round((item.metadata?.size || 0) / 1024),
+            createdAt: item.created_at || item.updated_at || new Date().toISOString(),
+            url: pUrl.publicUrl
+          };
+        });
+    } catch {
+      return [];
+    }
   }
 
   /**

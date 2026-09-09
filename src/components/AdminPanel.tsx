@@ -72,6 +72,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showWebhookGuide, setShowWebhookGuide] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [webhookSavedMsg, setWebhookSavedMsg] = useState(false);
+  const [cloudBackups, setCloudBackups] = useState<any[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+
+  const loadCloudBackups = async () => {
+    setLoadingBackups(true);
+    try {
+      const list = await driveStorage.listCloudBackups();
+      setCloudBackups(list);
+    } catch {}
+    setLoadingBackups(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'storage') {
+      loadCloudBackups();
+    }
+  }, [activeTab]);
 
   const [cronResult, setCronResult] = useState<any>(null);
   const [isCronRunning, setIsCronRunning] = useState(false);
@@ -921,17 +938,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    Tự Động Sao Lưu Dữ Liệu Về Google Drive (Chu Kỳ 24H)
-                    <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
-                      webhookUrlInput 
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
-                        : 'bg-amber-100 text-amber-800 border-amber-300'
-                    }`}>
-                      {webhookUrlInput ? 'Drive Webhook Đang Bật' : 'Chế Độ Cục Bộ (Cần Webhook)'}
+                    Tự Động Sao Lưu Dữ Liệu Lên Đám Mây (Cloud Storage)
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">
+                      ✓ Cloud Storage Tự Động (Sẵn Sàng)
                     </span>
                   </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Dữ liệu sao lưu: <strong>Tài khoản</strong>, <strong>sản phẩm máy tính</strong>, <strong>giao dịch</strong>, và <strong>tin nhắn</strong>.
+                    Dữ liệu được đóng gói tự động mỗi 24 giờ và lưu trữ an toàn trên <strong>Cloud Storage (Supabase)</strong>.
                   </p>
                 </div>
               </div>
@@ -966,7 +979,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   Tải Về Máy (.json)
                 </button>
 
-                {/* Nút sao lưu ngay lên Drive */}
+                {/* Nút sao lưu ngay lên Cloud */}
                 <button
                   onClick={async () => {
                     setIsBackingUp(true);
@@ -991,11 +1004,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       });
                       setBackupResult(res);
                       setLastBackupInfo(driveStorage.getLastBackupInfo());
+                      await loadCloudBackups();
 
-                      if (res.uploadedToDrive) {
-                        alert(`✅ Đã sao lưu thành công và tải tệp trực tiếp lên Google Drive!\nTên file: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nThư mục: NTSell_Storge`);
+                      if (res.uploadedToCloud) {
+                        alert(`✅ Đã sao lưu thành công lên Cloud Storage!\nTên tệp: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nTệp đã được lưu an toàn trên máy chủ Cloud.${res.uploadedToDrive ? '\nĐã đồng bộ thêm vào Google Drive!' : ''}`);
                       } else {
-                        alert(`⚠️ Đã tạo bản sao lưu cục bộ: ${res.fileName} (${res.sizeKB} KB).\n\n⚠️ Chưa thể tải lên Google Drive vì:\n${res.error || 'Chưa cấu hình Google Apps Script Webhook'}\n\nVui lòng dán Webhook bên dưới để file tự bay thẳng vào Google Drive, hoặc bấm "Tải Về Máy (.json)".`);
+                        alert(`⚠️ Đã tạo bản sao lưu: ${res.fileName} (${res.sizeKB} KB).\nBạn có thể bấm "Tải Về Máy (.json)" để tải file xuống.`);
                       }
                     } catch (err: any) {
                       alert('Lỗi sao lưu: ' + err?.message);
@@ -1007,7 +1021,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
-                  {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Lên Drive'}
+                  {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Lên Cloud Ngay'}
                 </button>
               </div>
             </div>
@@ -1026,22 +1040,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {lastBackupInfo.lastFileName || 'Chưa tạo tệp'}
                 </span>
                 {lastBackupInfo.lastFileName && (
-                  <span className={`text-[10px] block mt-0.5 ${lastBackupInfo.uploadedToDrive ? 'text-emerald-600 font-semibold' : 'text-amber-600'}`}>
-                    {lastBackupInfo.uploadedToDrive ? '✓ Đã đưa vào Drive' : '○ Chỉ lưu trên trình duyệt'}
+                  <span className="text-[10px] block mt-0.5 text-emerald-600 font-semibold">
+                    ✓ Đã lưu an toàn trên Cloud Storage
                   </span>
                 )}
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Thư mục Drive đích:</span>
-                <a 
-                  href={driveStatus.folderUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="font-bold text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  NTSell_Storge (5TB) &rarr;
-                </a>
+                <span className="text-slate-400 block text-[11px]">Nơi lưu trữ:</span>
+                <span className="font-bold text-indigo-700 flex items-center gap-1">
+                  ☁️ Supabase Cloud Storage (Bucket: backups)
+                </span>
               </div>
+            </div>
+
+            {/* Danh sách tệp sao lưu trên Cloud Storage */}
+            <div className="p-4 bg-white/95 rounded-xl border border-slate-200 text-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold text-slate-800 text-sm">
+                    Các Bản Sao Lưu Trên Cloud Storage ({cloudBackups.length} tệp)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadCloudBackups}
+                  disabled={loadingBackups}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loadingBackups ? 'animate-spin' : ''}`} />
+                  Làm mới danh sách
+                </button>
+              </div>
+
+              {loadingBackups ? (
+                <p className="text-xs text-slate-400 py-2">Đang tải danh sách bản sao lưu từ Cloud...</p>
+              ) : cloudBackups.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  <p className="font-medium">Chưa có tệp sao lưu nào trên Cloud Storage.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Bấm nút "Sao Lưu Lên Cloud Ngay" ở trên để tạo bản lưu đầu tiên.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {cloudBackups.map(item => (
+                    <div 
+                      key={item.id || item.name} 
+                      className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 transition"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono font-bold text-slate-800 truncate block text-[11px]" title={item.name}>
+                          📄 {item.name}
+                        </span>
+                        <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
+                          <span>🕒 {new Date(item.createdAt).toLocaleString('vi-VN')}</span>
+                          <span>📦 {item.sizeKB} KB</span>
+                        </div>
+                      </div>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        download={item.name}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-2xs flex items-center gap-1 shrink-0 transition"
+                      >
+                        <Download className="w-3 h-3" />
+                        Tải Về
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Cấu hình Webhook Google Apps Script để file tự động xuất hiện trong Drive */}
