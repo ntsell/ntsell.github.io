@@ -72,8 +72,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showWebhookGuide, setShowWebhookGuide] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [webhookSavedMsg, setWebhookSavedMsg] = useState(false);
-  const [cloudBackups, setCloudBackups] = useState<any[]>([]);
-  const [loadingBackups, setLoadingBackups] = useState(false);
   const [googleClientId, setGoogleClientId] = useState(() => driveStorage.getOAuthClientId());
   const [oauthToken, setOauthToken] = useState(() => driveStorage.getOAuthToken());
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
@@ -129,21 +127,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const loadCloudBackups = async () => {
-    setLoadingBackups(true);
-    try {
-      const list = await driveStorage.listCloudBackups();
-      setCloudBackups(list);
-    } catch {}
-    setLoadingBackups(false);
-  };
-
   useEffect(() => {
-    if (activeTab === 'storage') {
-      loadCloudBackups();
-      if (oauthToken) {
-        loadDriveFiles();
-      }
+    if (activeTab === 'storage' && oauthToken) {
+      loadDriveFiles();
     }
   }, [activeTab, oauthToken]);
 
@@ -986,22 +972,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
           </div>
 
-          {/* Sao Lưu Dữ Liệu Tự Động Mỗi 24H Về Google Drive */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-blue-50/80 border border-emerald-200/80 space-y-4">
+          {/* SAO LƯU DỮ LIỆU VÀO GOOGLE DRIVE 5TB (CHÍNH CHỦ ple1155n@gmail.com) */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50/90 to-indigo-50/90 border border-blue-200 space-y-4 shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <Database className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <HardDrive className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    Tự Động Sao Lưu Dữ Liệu Lên Đám Mây (Cloud Storage)
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">
-                      ✓ Cloud Storage Tự Động (Sẵn Sàng)
-                    </span>
+                    Sao Lưu Dữ Liệu Vào Google Drive 5TB (ple1155n@gmail.com)
+                    {oauthToken ? (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">
+                        ✓ Đã Kết Nối Drive 5TB
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border bg-amber-100 text-amber-800 border-amber-300">
+                        ⚡ Chưa Kết Nối
+                      </span>
+                    )}
                   </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Dữ liệu được đóng gói tự động mỗi 24 giờ và lưu trữ an toàn trên <strong>Cloud Storage (Supabase)</strong>.
+                    Lưu trữ trực tiếp và vĩnh viễn vào thư mục <strong>NTSell_Storge</strong> trên Google Drive 5TB chính chủ của bạn (100% không tốn dung lượng Supabase).
                   </p>
                 </div>
               </div>
@@ -1029,316 +1021,199 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       messages: localMessages
                     });
                   }}
-                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-xs flex items-center gap-1.5 transition"
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                   title="Tải ngay file backup dạng .json về máy tính của bạn"
                 >
                   <Download className="w-3.5 h-3.5 text-slate-600" />
                   Tải Về Máy (.json)
                 </button>
 
-                {/* Nút sao lưu ngay lên Cloud */}
-                <button
-                  onClick={async () => {
-                    setIsBackingUp(true);
-                    try {
-                      let localProfiles = [];
-                      try {
-                        const p = localStorage.getItem('ntsell_user_profiles_list');
-                        if (p) localProfiles = JSON.parse(p);
-                      } catch {}
-                      
-                      let localMessages = [];
-                      try {
-                        const m = localStorage.getItem('ntsell_messages');
-                        if (m) localMessages = JSON.parse(m);
-                      } catch {}
+                {oauthToken ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => executeBackupToDrive()}
+                      disabled={isBackingUp}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
+                      {isBackingUp ? 'Đang tải lên Drive...' : 'Tải Lên Google Drive Ngay'}
+                    </button>
 
-                      const res = await driveStorage.performBackupToDrive({
-                        profiles: localProfiles,
-                        products: products,
-                        transactions: transactions,
-                        messages: localMessages
-                      });
-                      setBackupResult(res);
-                      setLastBackupInfo(driveStorage.getLastBackupInfo());
-                      await loadCloudBackups();
-
-                      if (res.uploadedToCloud) {
-                        alert(`✅ Đã sao lưu thành công lên Cloud Storage!\nTên tệp: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nTệp đã được lưu an toàn trên máy chủ Cloud.${res.uploadedToDrive ? '\nĐã đồng bộ thêm vào Google Drive!' : ''}`);
-                      } else {
-                        alert(`⚠️ Đã tạo bản sao lưu: ${res.fileName} (${res.sizeKB} KB).\nBạn có thể bấm "Tải Về Máy (.json)" để tải file xuống.`);
+                    <button
+                      type="button"
+                      onClick={() => {
+                        driveStorage.clearOAuthToken();
+                        setOauthToken(null);
+                        setDriveFiles([]);
+                      }}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer"
+                    >
+                      Ngắt kết nối
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsConnectingDrive(true);
+                      try {
+                        const token = await driveStorage.connectGoogleDrive();
+                        setOauthToken(token);
+                        await executeBackupToDrive(token);
+                      } catch (err: any) {
+                        alert('Không thể kết nối Google Drive: ' + err?.message);
+                      } finally {
+                        setIsConnectingDrive(false);
                       }
-                    } catch (err: any) {
-                      alert('Lỗi sao lưu: ' + err?.message);
-                    } finally {
-                      setIsBackingUp(false);
-                    }
-                  }}
-                  disabled={isBackingUp}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
-                  {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Lên Cloud Ngay'}
-                </button>
+                    }}
+                    disabled={isConnectingDrive || isBackingUp}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    <HardDrive className="w-3.5 h-3.5" />
+                    {isConnectingDrive ? 'Đang mở Google Đăng nhập...' : isBackingUp ? 'Đang tải lên Drive...' : '🔗 Kết Nối & Tải Lên Google Drive Ngay'}
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Thông tin mốc thời gian */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/90 p-3.5 rounded-xl border border-emerald-100">
+            {/* Mốc thời gian & trạng thái lưu trữ */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/95 p-3.5 rounded-xl border border-blue-100">
               <div>
-                <span className="text-slate-400 block text-[11px]">Lần sao lưu gần nhất:</span>
+                <span className="text-slate-400 block text-[11px]">Lần sao lưu Drive gần nhất:</span>
                 <span className="font-bold text-slate-800">
                   {lastBackupInfo.lastBackupTime ? new Date(lastBackupInfo.lastBackupTime).toLocaleString('vi-VN') : 'Chưa có bản lưu'}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[11px]">Tệp sao lưu mới nhất:</span>
-                <span className="font-mono text-emerald-700 font-bold truncate block" title={lastBackupInfo.lastFileName || ''}>
+                <span className="font-mono text-blue-700 font-bold truncate block" title={lastBackupInfo.lastFileName || ''}>
                   {lastBackupInfo.lastFileName || 'Chưa tạo tệp'}
                 </span>
                 {lastBackupInfo.lastFileName && (
                   <span className="text-[10px] block mt-0.5 text-emerald-600 font-semibold">
-                    ✓ Đã lưu an toàn trên Cloud Storage
+                    ✓ Đã lưu an toàn trên Google Drive (5TB)
                   </span>
                 )}
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Nơi lưu trữ:</span>
-                <span className="font-bold text-indigo-700 flex items-center gap-1">
-                  ☁️ Supabase Cloud Storage (Bucket: backups)
-                </span>
+                <span className="text-slate-400 block text-[11px]">Thư mục lưu trữ:</span>
+                <a
+                  href="https://drive.google.com/drive/folders/1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  📁 NTSell_Storge &rarr;
+                </a>
               </div>
             </div>
 
-            {/* Danh sách tệp sao lưu trên Cloud Storage */}
-            <div className="p-4 bg-white/95 rounded-xl border border-slate-200 text-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold text-slate-800 text-sm">
-                    Các Bản Sao Lưu Trên Cloud Storage ({cloudBackups.length} tệp)
+            {/* Danh sách tệp trong thư mục Drive nếu đã kết nối */}
+            {oauthToken && (
+              <div className="pt-2 border-t border-blue-200/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    📁 Các tệp hiện có trong thư mục Google Drive <strong>NTSell_Storge</strong> ({driveFiles.length} tệp):
                   </span>
+                  <button
+                    type="button"
+                    onClick={loadDriveFiles}
+                    disabled={loadingDriveFiles}
+                    className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingDriveFiles ? 'animate-spin' : ''}`} />
+                    Làm mới danh sách Drive
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={loadCloudBackups}
-                  disabled={loadingBackups}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingBackups ? 'animate-spin' : ''}`} />
-                  Làm mới danh sách
-                </button>
-              </div>
 
-              {loadingBackups ? (
-                <p className="text-xs text-slate-400 py-2">Đang tải danh sách bản sao lưu từ Cloud...</p>
-              ) : cloudBackups.length === 0 ? (
-                <div className="p-4 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                  <p className="font-medium">Chưa có tệp sao lưu nào trên Cloud Storage.</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Bấm nút "Sao Lưu Lên Cloud Ngay" ở trên để tạo bản lưu đầu tiên.</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {cloudBackups.map(item => (
-                    <div 
-                      key={item.id || item.name} 
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 transition"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="font-mono font-bold text-slate-800 truncate block text-[11px]" title={item.name}>
-                          📄 {item.name}
-                        </span>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
-                          <span>🕒 {new Date(item.createdAt).toLocaleString('vi-VN')}</span>
-                          <span>📦 {item.sizeKB} KB</span>
-                        </div>
-                      </div>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        download={item.name}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-2xs flex items-center gap-1 shrink-0 transition"
-                      >
-                        <Download className="w-3 h-3" />
-                        Tải Về
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* KẾT NỐI GOOGLE DRIVE CHÍNH CHỦ (OAUTH 2.0 - KHÔNG CẦN GOOGLE SCRIPT) */}
-            <div className="p-4 bg-white/95 rounded-2xl border border-blue-200 text-xs space-y-3.5 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                    <HardDrive className="w-4 h-4" />
+                {loadingDriveFiles ? (
+                  <p className="text-xs text-slate-400 py-2">Đang tải danh sách từ Google Drive...</p>
+                ) : driveFiles.length === 0 ? (
+                  <div className="p-3 text-center text-slate-500 bg-white/70 rounded-xl border border-dashed border-blue-200">
+                    <p className="font-medium text-xs">Chưa có tệp sao lưu nào trong thư mục Google Drive.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Bấm nút "Tải Lên Google Drive Ngay" ở trên để đẩy tệp đầu tiên.</p>
                   </div>
-                  <div>
-                    <h5 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      Lưu Trực Tiếp Vào Google Drive 5TB (Chính Chủ ple1155n@gmail.com)
-                      {oauthToken ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          ✓ Đã Kết Nối
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-300">
-                          Chưa Kết Nối
-                        </span>
-                      )}
-                    </h5>
-                    <p className="text-[11px] text-slate-500">
-                      Tải thẳng tệp sao lưu vào thư mục <strong>NTSell_Storge</strong> bằng quyền tài khoản của bạn (Không qua Google Script).
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {oauthToken ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => executeBackupToDrive()}
-                        disabled={isBackingUp}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
-                        {isBackingUp ? 'Đang tải lên Drive...' : 'Tải Lên Google Drive Ngay'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          driveStorage.clearOAuthToken();
-                          setOauthToken(null);
-                          setDriveFiles([]);
-                        }}
-                        className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer"
-                      >
-                        Ngắt kết nối
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIsConnectingDrive(true);
-                        try {
-                          const token = await driveStorage.connectGoogleDrive();
-                          setOauthToken(token);
-                          // Sau khi đăng nhập thành công -> TỰ ĐỘNG SAO LƯU THẲNG LÊN DRIVE NGAY LẬP TỨC
-                          await executeBackupToDrive(token);
-                        } catch (err: any) {
-                          alert('Không thể kết nối Google Drive: ' + err?.message);
-                        } finally {
-                          setIsConnectingDrive(false);
-                        }
-                      }}
-                      disabled={isConnectingDrive || isBackingUp}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
-                    >
-                      <HardDrive className="w-3.5 h-3.5" />
-                      {isConnectingDrive ? 'Đang mở đăng nhập...' : isBackingUp ? 'Đang tự động sao lưu lên Drive...' : '🔗 Kết Nối & Tự Động Sao Lưu Vào Drive'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Ô cấu hình Client ID */}
-              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs">
-                <span className="text-slate-500 font-medium shrink-0">Google OAuth Client ID:</span>
-                <input
-                  type="text"
-                  placeholder="xxxx.apps.googleusercontent.com (Tạo trong Google Cloud Console)"
-                  value={googleClientId}
-                  onChange={(e) => setGoogleClientId(e.target.value)}
-                  className="flex-1 w-full px-3 py-1.5 text-[11px] rounded-lg border border-slate-300 font-mono bg-slate-50 focus:bg-white focus:outline-hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    driveStorage.setOAuthClientId(googleClientId);
-                    alert('Đã lưu Google Client ID thành công!');
-                  }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-[11px] shrink-0"
-                >
-                  Lưu Client ID
-                </button>
-              </div>
-
-              {/* Danh sách tệp trong thư mục Drive nếu đã kết nối */}
-              {oauthToken && (
-                <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                      📁 Các tệp hiện có trong thư mục Google Drive <strong>NTSell_Storge</strong> ({driveFiles.length} tệp):
-                    </span>
-                    <button
-                      type="button"
-                      onClick={loadDriveFiles}
-                      disabled={loadingDriveFiles}
-                      className="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${loadingDriveFiles ? 'animate-spin' : ''}`} />
-                      Làm mới
-                    </button>
-                  </div>
-
-                  {loadingDriveFiles ? (
-                    <p className="text-[11px] text-slate-400 py-1">Đang đọc danh sách từ Google Drive...</p>
-                  ) : driveFiles.length === 0 ? (
-                    <p className="text-[11px] text-slate-500 py-1 italic">Thư mục NTSell_Storge hiện chưa có tệp backup nào.</p>
-                  ) : (
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                      {driveFiles.map(file => (
-                        <div key={file.id} className="p-2 bg-blue-50/50 rounded-lg flex items-center justify-between text-[11px]">
-                          <span className="font-mono text-slate-800 truncate" title={file.name}>📄 {file.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400 text-[10px]">{file.sizeKB} KB</span>
-                            <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
-                              Mở trên Drive &rarr;
-                            </a>
+                ) : (
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {driveFiles.map(file => (
+                      <div key={file.id} className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center justify-between text-xs shadow-2xs">
+                        <div className="min-w-0 flex-1">
+                          <span className="font-mono font-bold text-slate-800 truncate block text-[11px]" title={file.name}>
+                            📄 {file.name}
+                          </span>
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
+                            <span>🕒 {new Date(file.createdAt).toLocaleString('vi-VN')}</span>
+                            <span>📦 {file.sizeKB} KB</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Hướng dẫn chi tiết tạo Google OAuth Client ID */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                    💡 Hướng dẫn tạo Google OAuth Client ID (1 phút trong Google Cloud Console):
-                  </span>
-                  <a
-                    href="https://console.cloud.google.com/apis/credentials"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 font-bold hover:underline flex items-center gap-1 text-[11px]"
-                  >
-                    Mở Google Cloud Credentials &rarr;
-                  </a>
-                </div>
-
-                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
-                  <li>Đăng nhập tài khoản <strong>ple1155n@gmail.com</strong> vào <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-blue-600 underline font-medium">console.cloud.google.com</a> (chọn dự án <code>first-tine-507913-d0</code>).</li>
-                  <li>Bấm <strong>Create Credentials (Tạo thông tin xác thực)</strong> &gt; Chọn <strong>OAuth client ID (Mã khách hàng OAuth)</strong>.</li>
-                  <li>Mục Loại ứng dụng: Chọn <strong>Web application (Ứng dụng web)</strong>.</li>
-                  <li>Ở mục <em>Authorized JavaScript origins (Nguồn JavaScript được ủy quyền)</em>, bấm <strong>Thêm URI</strong> và dán 2 địa chỉ sau:
-                    <div className="mt-1 space-y-0.5 font-mono text-[10px] bg-slate-100 p-2 rounded border border-slate-200">
-                      <div>https://ntsell.github.io</div>
-                      <div>http://localhost:5173</div>
-                    </div>
-                  </li>
-                  <li>Bấm <strong>Create (Tạo)</strong>. Google sẽ hiển thị dãy <strong>Client ID</strong> (dạng <code>xxxx.apps.googleusercontent.com</code>).</li>
-                  <li>Sao chép dãy Client ID đó dán vào ô <strong>Google OAuth Client ID</strong> ở trên và bấm <strong>Lưu Client ID</strong>.</li>
-                  <li>Cuối cùng bấm nút màu xanh: <strong>"🔗 Kết Nối Google Drive (Đăng nhập 1-click)"</strong> để hoàn tất!</li>
-                </ol>
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg shadow-2xs flex items-center gap-1 shrink-0 transition"
+                        >
+                          Mở trên Drive &rarr;
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Cấu hình Client ID */}
+            <div className="pt-2 border-t border-blue-200/60 flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs">
+              <span className="text-slate-500 font-medium shrink-0">Google OAuth Client ID:</span>
+              <input
+                type="text"
+                placeholder="xxxx.apps.googleusercontent.com"
+                value={googleClientId}
+                onChange={(e) => setGoogleClientId(e.target.value)}
+                className="flex-1 w-full px-3 py-1.5 text-[11px] rounded-lg border border-slate-300 font-mono bg-white focus:outline-hidden"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  driveStorage.setOAuthClientId(googleClientId);
+                  alert('Đã lưu Google Client ID thành công!');
+                }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-[11px] shrink-0 cursor-pointer"
+              >
+                Lưu Client ID
+              </button>
+            </div>
+
+            {/* Hướng dẫn chi tiết tạo Google OAuth Client ID */}
+            <div className="p-3 bg-white/70 rounded-xl border border-blue-200 text-xs text-slate-700 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                  💡 Hướng dẫn cấu hình Google OAuth Client ID (1 phút trong Google Cloud Console):
+                </span>
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 font-bold hover:underline flex items-center gap-1 text-[11px]"
+                >
+                  Mở Google Cloud Credentials &rarr;
+                </a>
+              </div>
+
+              <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
+                <li>Đăng nhập tài khoản <strong>ple1155n@gmail.com</strong> vào <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-blue-600 underline font-medium">console.cloud.google.com</a> (chọn dự án <code>first-tine-507913-d0</code>).</li>
+                <li>Bấm <strong>Create Credentials (Tạo thông tin xác thực)</strong> &gt; Chọn <strong>OAuth client ID (Mã khách hàng OAuth)</strong>.</li>
+                <li>Mục Loại ứng dụng: Chọn <strong>Web application (Ứng dụng web)</strong>.</li>
+                <li>Ở mục <em>Authorized JavaScript origins (Nguồn JavaScript được ủy quyền)</em>, bấm <strong>Thêm URI</strong> và dán 2 địa chỉ:
+                  <div className="mt-1 space-y-0.5 font-mono text-[10px] bg-slate-100 p-2 rounded border border-slate-200">
+                    <div>https://ntsell.github.io</div>
+                    <div>http://localhost:5173</div>
+                  </div>
+                </li>
+                <li>Bấm <strong>Create (Tạo)</strong>. Google sẽ hiển thị dãy <strong>Client ID</strong> (dạng <code>xxxx.apps.googleusercontent.com</code>).</li>
+                <li>Sao chép dãy Client ID đó dán vào ô <strong>Google OAuth Client ID</strong> ở trên và bấm <strong>Lưu Client ID</strong>.</li>
+                <li>Cuối cùng bấm nút màu xanh: <strong>"🔗 Kết Nối & Tải Lên Google Drive Ngay"</strong> để hoàn tất!</li>
+              </ol>
             </div>
 
             {backupResult && (
@@ -1350,7 +1225,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {backupResult.uploadedToDrive ? (
                   <>✓ [OK] Đã tải trực tiếp vào Google Drive: {backupResult.fileName} ({backupResult.sizeKB} KB) lúc {new Date(backupResult.backupTime).toLocaleTimeString('vi-VN')}.</>
                 ) : (
-                  <>⚠️ [Cục Bộ] Đã đóng gói: {backupResult.fileName} ({backupResult.sizeKB} KB). {backupResult.error ? `Lỗi Drive: ${backupResult.error}` : 'Chưa cấu hình Webhook Drive'}.</>
+                  <>⚠️ [Thất Bại] {backupResult.error || 'Chưa tải được lên Google Drive'}.</>
                 )}
               </div>
             )}

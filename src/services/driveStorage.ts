@@ -157,7 +157,7 @@ export class GoogleDriveStorageService {
       try {
         const client = (window as any).google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly',
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly',
           callback: (response: any) => {
             if (response.error) {
               reject(new Error(response.error_description || response.error));
@@ -171,7 +171,7 @@ export class GoogleDriveStorageService {
             }
           }
         });
-        client.requestAccessToken();
+        client.requestAccessToken({ prompt: '' });
       } catch (err) {
         reject(err);
       }
@@ -184,25 +184,22 @@ export class GoogleDriveStorageService {
     content: string
   ): Promise<{ success: boolean; fileId?: string; error?: string }> {
     try {
-      const boundary = '-------NTSellBoundary' + Math.random().toString(36).substring(2);
-      const delimiter = '\r\n--' + boundary + '\r\n';
-      const closeDelim = '\r\n--' + boundary + '--';
-
-      const metadata = {
+      const boundary = 'NTSellBoundary' + Math.random().toString(36).substring(2);
+      const metadata = JSON.stringify({
         name: fileName,
         parents: [this.targetFolderId]
-      };
+      });
 
       const multipartRequestBody =
-        delimiter +
-        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-        JSON.stringify(metadata) +
-        delimiter +
-        'Content-Type: application/json\r\n\r\n' +
-        content +
-        closeDelim;
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+        `${metadata}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: application/json\r\n\r\n` +
+        `${content}\r\n` +
+        `--${boundary}--`;
 
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      let res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -211,14 +208,42 @@ export class GoogleDriveStorageService {
         body: multipartRequestBody
       });
 
+      // Nếu thư mục cha bị lỗi quyền (404/403), thử upload thẳng vào thư mục gốc của Drive
+      if (!res.ok && (res.status === 404 || res.status === 403)) {
+        console.warn('Không ghi được vào thư mục NTSell_Storge, chuyển sang ghi vào My Drive gốc...');
+        const rootMetadata = JSON.stringify({ name: fileName });
+        const rootBody =
+          `--${boundary}\r\n` +
+          `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+          `${rootMetadata}\r\n` +
+          `--${boundary}\r\n` +
+          `Content-Type: application/json\r\n\r\n` +
+          `${content}\r\n` +
+          `--${boundary}--`;
+
+        res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: rootBody
+        });
+      }
+
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
+        const errText = await res.text().catch(() => '');
+        let errMsg = `Lỗi Google Drive HTTP ${res.status}`;
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData?.error?.message || errMsg;
+        } catch {}
         if (res.status === 401) {
           this.clearOAuthToken();
         }
         return {
           success: false,
-          error: errData?.error?.message || `Lỗi HTTP ${res.status}`
+          error: errMsg
         };
       }
 
@@ -237,8 +262,8 @@ export class GoogleDriveStorageService {
 
   async listDriveFiles(accessToken: string): Promise<Array<{ id: string; name: string; sizeKB: number; createdAt: string; url: string }>> {
     try {
-      const q = encodeURIComponent(`'${this.targetFolderId}' in parents and trashed = false`);
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,size,createdTime,webViewLink)&orderBy=createdTime desc`, {
+      const q = encodeURIComponent(`('${this.targetFolderId}' in parents or name contains 'NTSell_Backup_') and trashed = false`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,size,createdTime,webViewLink)&orderBy=createdTime desc&pageSize=30`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       if (!res.ok) return [];
@@ -257,10 +282,10 @@ export class GoogleDriveStorageService {
 
   getWebhookUrl(): string {
     try {
-      const stored = localStorage.getItem('ntsell_drive_webhook_url');
-      if (stored) return stored.trim();
-    } catch {}
-    return ((import.meta as any).env?.VITE_DRIVE_WEBHOOK_URL || '').trim();
+      return localStorage.getItem('ntsell_drive_webhook_url') || '';
+    } catch {
+      return '';
+    }
   }
 
   setWebhookUrl(url: string): void {
@@ -274,8 +299,8 @@ export class GoogleDriveStorageService {
   }
 
   /**
-   * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn) lên Cloud Storage
-   * Chu kỳ mỗi 24 giờ 1 lần (Tự động lưu vào Supabase Cloud & Google Drive nếu có Webhook)
+   * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn)
+   * LƯU TRỰC TIẾP VÀO GOOGLE DRIVE 5TB (Không lưu vào Supabase)
    */
   async performBackupToDrive(payload: {
     profiles?: any[];
@@ -302,7 +327,6 @@ export class GoogleDriveStorageService {
       system: 'NTSell Marketplace Database Backup',
       backupTime,
       version: '1.0',
-      targetFolderId: this.targetFolderId,
       summary: {
         profilesCount: payload.profiles?.length || 0,
         productsCount: payload.products?.length || 0,
@@ -321,31 +345,9 @@ export class GoogleDriveStorageService {
     const blob = new Blob([jsonString], { type: 'application/json' });
     const sizeKB = Math.round(blob.size / 1024);
 
-    // Cập nhật quota ước lượng
     this.usedQuotaGB += (blob.size / (1024 * 1024 * 1024));
 
-    // 1. Tự động lưu thẳng vào Supabase Cloud Storage (Bucket: backups) - Không cần cấu hình phức tạp
-    let uploadedToCloud = false;
-    let cloudUrl = '';
-    try {
-      const { data: uploadRes, error: uploadErr } = await supabase.storage
-        .from('backups')
-        .upload(fileName, blob, {
-          contentType: 'application/json',
-          upsert: true
-        });
-      if (!uploadErr && uploadRes) {
-        uploadedToCloud = true;
-        const { data: pUrl } = supabase.storage.from('backups').getPublicUrl(fileName);
-        cloudUrl = pUrl.publicUrl;
-      } else if (uploadErr) {
-        console.warn('Lỗi lưu Cloud Storage:', uploadErr.message);
-      }
-    } catch (err) {
-      console.warn('Không thể kết nối Cloud Storage:', err);
-    }
-
-    // 2. Thử đẩy trực tiếp lên Google Drive qua OAuth2 (không cần Google Script)
+    // ĐẨY TRỰC TIẾP LÊN GOOGLE DRIVE (HOÀN TOÀN KHÔNG LƯU SUPABASE)
     const oauthToken = overrideToken || this.getOAuthToken();
     let uploadedToDrive = false;
     let uploadError = '';
@@ -358,52 +360,24 @@ export class GoogleDriveStorageService {
         uploadError = driveUploadRes.error || 'Lỗi upload Google Drive';
       }
     } else {
-      // Nếu chưa có OAuth token, thử qua Webhook Apps Script (nếu có cài đặt)
-      const webhookUrl = this.getWebhookUrl();
-      if (webhookUrl) {
-        try {
-          const res = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              folderId: this.targetFolderId,
-              fileName,
-              content: jsonString
-            })
-          });
-
-          if (res.ok) {
-            const resData = await res.json().catch(() => null);
-            if (resData && resData.success === false) {
-              uploadError = resData.error || 'Google Apps Script trả về lỗi';
-            } else {
-              uploadedToDrive = true;
-            }
-          } else {
-            uploadError = `HTTP ${res.status}`;
-          }
-        } catch (err: any) {
-          uploadError = err?.message || 'Không thể kết nối đến Webhook Drive';
-        }
-      }
+      uploadError = 'Chưa kết nối tài khoản Google Drive';
     }
 
     // Lưu mốc thời gian backup gần nhất
     try {
-      localStorage.setItem('ntsell_last_drive_backup_time', backupTime);
-      localStorage.setItem('ntsell_last_drive_backup_filename', fileName);
-      localStorage.setItem('ntsell_last_drive_backup_status', uploadedToCloud || uploadedToDrive ? 'uploaded' : 'local_only');
-      if (cloudUrl) {
-        localStorage.setItem('ntsell_last_drive_backup_cloud_url', cloudUrl);
+      if (uploadedToDrive) {
+        localStorage.setItem('ntsell_last_drive_backup_time', backupTime);
+        localStorage.setItem('ntsell_last_drive_backup_filename', fileName);
+        localStorage.setItem('ntsell_last_drive_backup_status', 'uploaded');
       }
     } catch {}
 
     const driveUrl = `https://drive.google.com/drive/folders/${this.targetFolderId}`;
     return {
-      success: true,
-      uploadedToCloud,
+      success: uploadedToDrive,
+      uploadedToCloud: false,
       uploadedToDrive,
-      cloudUrl,
+      cloudUrl: '',
       fileName,
       sizeKB,
       backupTime,
@@ -413,29 +387,10 @@ export class GoogleDriveStorageService {
   }
 
   /**
-   * Lấy danh sách các tệp sao lưu đã lưu trên Cloud Storage (Supabase)
+   * Phương thức tương thích ngược (không còn dùng Supabase lưu trữ backup)
    */
   async listCloudBackups(): Promise<CloudBackupItem[]> {
-    try {
-      const { data, error } = await supabase.storage
-        .from('backups')
-        .list('', { sortBy: { column: 'created_at', order: 'desc' } });
-      if (error || !data) return [];
-      return data
-        .filter(item => item.name.endsWith('.json'))
-        .map(item => {
-          const { data: pUrl } = supabase.storage.from('backups').getPublicUrl(item.name);
-          return {
-            name: item.name,
-            id: item.id || item.name,
-            sizeKB: Math.round((item.metadata?.size || 0) / 1024),
-            createdAt: item.created_at || item.updated_at || new Date().toISOString(),
-            url: pUrl.publicUrl
-          };
-        });
-    } catch {
-      return [];
-    }
+    return [];
   }
 
   /**
