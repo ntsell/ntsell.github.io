@@ -31,7 +31,7 @@ import { runAutoDeleteVideosJob } from '../services/autoDeleteWorker';
 import { AdminSessions } from './AdminSessions';
 import { AdminUsersManagement } from './AdminUsersManagement';
 import { publishBroadcastToSupabase } from '../services/supabaseService';
-import { Megaphone, Send, Database } from 'lucide-react';
+import { Megaphone, Send, Database, Download, Copy, ChevronDown, ChevronUp, Link2, Info } from 'lucide-react';
 
 interface AdminPanelProps {
   products: Product[];
@@ -68,6 +68,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [lastBackupInfo, setLastBackupInfo] = useState(() => driveStorage.getLastBackupInfo());
   const [backupResult, setBackupResult] = useState<any>(null);
+  const [webhookUrlInput, setWebhookUrlInput] = useState(() => driveStorage.getWebhookUrl());
+  const [showWebhookGuide, setShowWebhookGuide] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [webhookSavedMsg, setWebhookSavedMsg] = useState(false);
 
   const [cronResult, setCronResult] = useState<any>(null);
   const [isCronRunning, setIsCronRunning] = useState(false);
@@ -917,56 +921,98 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    Tự Động Sao Lưu Dữ Liệu Về Google Drive (Chu Kỳ Mỗi 24 Giờ)
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      Đang Kích Hoạt
+                    Tự Động Sao Lưu Dữ Liệu Về Google Drive (Chu Kỳ 24H)
+                    <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                      webhookUrlInput 
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                        : 'bg-amber-100 text-amber-800 border-amber-300'
+                    }`}>
+                      {webhookUrlInput ? 'Drive Webhook Đang Bật' : 'Chế Độ Cục Bộ (Cần Webhook)'}
                     </span>
                   </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Các dữ liệu được sao lưu định kỳ: <strong>Danh sách tài khoản</strong>, <strong>mặt hàng đang treo</strong>, <strong>lịch sử mua hàng</strong>, và <strong>tin nhắn trao đổi</strong>.
+                    Dữ liệu sao lưu: <strong>Tài khoản</strong>, <strong>sản phẩm máy tính</strong>, <strong>giao dịch</strong>, và <strong>tin nhắn</strong>.
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={async () => {
-                  setIsBackingUp(true);
-                  try {
+              <div className="flex items-center gap-2">
+                {/* Nút tải file trực tiếp về máy */}
+                <button
+                  type="button"
+                  onClick={() => {
                     let localProfiles = [];
                     try {
                       const p = localStorage.getItem('ntsell_user_profiles_list');
                       if (p) localProfiles = JSON.parse(p);
                     } catch {}
-                    
                     let localMessages = [];
                     try {
                       const m = localStorage.getItem('ntsell_messages');
                       if (m) localMessages = JSON.parse(m);
                     } catch {}
 
-                    const res = await driveStorage.performBackupToDrive({
+                    driveStorage.downloadBackupJson({
                       profiles: localProfiles,
-                      products: products,
-                      transactions: transactions,
+                      products,
+                      transactions,
                       messages: localMessages
                     });
-                    setBackupResult(res);
-                    setLastBackupInfo(driveStorage.getLastBackupInfo());
-                    alert(`✅ Sao lưu thành công về Google Drive!\nTên file: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nĐã lưu vào thư mục NTSell_Storge.`);
-                  } catch (err: any) {
-                    alert('Lỗi sao lưu: ' + err?.message);
-                  } finally {
-                    setIsBackingUp(false);
-                  }
-                }}
-                disabled={isBackingUp}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
-                {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Ngay Lập Tức'}
-              </button>
+                  }}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-xs flex items-center gap-1.5 transition"
+                  title="Tải ngay file backup dạng .json về máy tính của bạn"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" />
+                  Tải Về Máy (.json)
+                </button>
+
+                {/* Nút sao lưu ngay lên Drive */}
+                <button
+                  onClick={async () => {
+                    setIsBackingUp(true);
+                    try {
+                      let localProfiles = [];
+                      try {
+                        const p = localStorage.getItem('ntsell_user_profiles_list');
+                        if (p) localProfiles = JSON.parse(p);
+                      } catch {}
+                      
+                      let localMessages = [];
+                      try {
+                        const m = localStorage.getItem('ntsell_messages');
+                        if (m) localMessages = JSON.parse(m);
+                      } catch {}
+
+                      const res = await driveStorage.performBackupToDrive({
+                        profiles: localProfiles,
+                        products: products,
+                        transactions: transactions,
+                        messages: localMessages
+                      });
+                      setBackupResult(res);
+                      setLastBackupInfo(driveStorage.getLastBackupInfo());
+
+                      if (res.uploadedToDrive) {
+                        alert(`✅ Đã sao lưu thành công và tải tệp trực tiếp lên Google Drive!\nTên file: ${res.fileName}\nDung lượng: ${res.sizeKB} KB\nThư mục: NTSell_Storge`);
+                      } else {
+                        alert(`⚠️ Đã tạo bản sao lưu cục bộ: ${res.fileName} (${res.sizeKB} KB).\n\n⚠️ Chưa thể tải lên Google Drive vì:\n${res.error || 'Chưa cấu hình Google Apps Script Webhook'}\n\nVui lòng dán Webhook bên dưới để file tự bay thẳng vào Google Drive, hoặc bấm "Tải Về Máy (.json)".`);
+                      }
+                    } catch (err: any) {
+                      alert('Lỗi sao lưu: ' + err?.message);
+                    } finally {
+                      setIsBackingUp(false);
+                    }
+                  }}
+                  disabled={isBackingUp}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
+                  {isBackingUp ? 'Đang sao lưu...' : 'Sao Lưu Lên Drive'}
+                </button>
+              </div>
             </div>
 
+            {/* Thông tin mốc thời gian */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/90 p-3.5 rounded-xl border border-emerald-100">
               <div>
                 <span className="text-slate-400 block text-[11px]">Lần sao lưu gần nhất:</span>
@@ -979,6 +1025,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="font-mono text-emerald-700 font-bold truncate block" title={lastBackupInfo.lastFileName || ''}>
                   {lastBackupInfo.lastFileName || 'Chưa tạo tệp'}
                 </span>
+                {lastBackupInfo.lastFileName && (
+                  <span className={`text-[10px] block mt-0.5 ${lastBackupInfo.uploadedToDrive ? 'text-emerald-600 font-semibold' : 'text-amber-600'}`}>
+                    {lastBackupInfo.uploadedToDrive ? '✓ Đã đưa vào Drive' : '○ Chỉ lưu trên trình duyệt'}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-slate-400 block text-[11px]">Thư mục Drive đích:</span>
@@ -993,9 +1044,154 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
+            {/* Cấu hình Webhook Google Apps Script để file tự động xuất hiện trong Drive */}
+            <div className="p-3.5 bg-white/95 rounded-xl border border-slate-200 text-xs space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-indigo-600" />
+                  <span className="font-bold text-slate-800">Cấu hình Webhook Google Apps Script (Để file tự xuất hiện trên Drive):</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowWebhookGuide(!showWebhookGuide)}
+                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  {showWebhookGuide ? 'Ẩn hướng dẫn cài đặt' : 'Xem hướng dẫn cài đặt 1 phút'}
+                  {showWebhookGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                  value={webhookUrlInput}
+                  onChange={(e) => {
+                    setWebhookUrlInput(e.target.value);
+                    setWebhookSavedMsg(false);
+                  }}
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    driveStorage.setWebhookUrl(webhookUrlInput);
+                    setWebhookSavedMsg(true);
+                    setTimeout(() => setWebhookSavedMsg(false), 3000);
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition"
+                >
+                  Lưu Webhook
+                </button>
+              </div>
+
+              {webhookSavedMsg && (
+                <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Đã lưu cấu hình Webhook thành công!
+                </div>
+              )}
+
+              {/* Hướng dẫn chi tiết tạo Google Apps Script */}
+              {showWebhookGuide && (
+                <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                  <p className="font-bold text-slate-800">
+                    💡 Tại sao cần Google Apps Script?
+                  </p>
+                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                    Google chặn Service Account ghi file vào thư mục Drive cá nhân (lỗi <code>403 Service Accounts do not have storage quota</code>). Google Apps Script chạy trực tiếp dưới tài khoản <strong>ple1155n@gmail.com</strong> của bạn nên có toàn quyền tạo file vào thư mục <strong>NTSell_Storge</strong> mà không bị giới hạn quota.
+                  </p>
+
+                  <p className="font-bold text-slate-800 pt-1">
+                    Các bước cài đặt (chỉ cần làm 1 lần duy nhất):
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
+                    <li>Đăng nhập tài khoản <strong>ple1155n@gmail.com</strong> và mở trang: <a href="https://script.google.com/home/start" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">script.google.com &rarr;</a></li>
+                    <li>Bấm nút <strong>Dự án mới</strong> (New project).</li>
+                    <li>Xóa toàn bộ mã mặc định và dán đoạn mã bên dưới vào:</li>
+                  </ol>
+
+                  <div className="relative">
+                    <pre className="p-3 bg-slate-900 text-emerald-300 rounded-lg text-[10px] font-mono overflow-x-auto leading-relaxed max-h-48">
+{`function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var targetFolderId = data.folderId || "1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj";
+    var folder = DriveApp.getFolderById(targetFolderId);
+    var file = folder.createFile(data.fileName, data.content, "application/json");
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      fileId: file.getId(),
+      url: file.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`}
+                    </pre>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const scriptCode = `function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var targetFolderId = data.folderId || "1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj";
+    var folder = DriveApp.getFolderById(targetFolderId);
+    var file = folder.createFile(data.fileName, data.content, "application/json");
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      fileId: file.getId(),
+      url: file.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+                        navigator.clipboard.writeText(scriptCode);
+                        setCopiedScript(true);
+                        setTimeout(() => setCopiedScript(false), 2500);
+                      }}
+                      className="absolute top-2 right-2 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[10px] font-bold flex items-center gap-1 transition"
+                    >
+                      <Copy className="w-3 h-3" />
+                      {copiedScript ? 'Đã sao chép!' : 'Sao chép mã'}
+                    </button>
+                  </div>
+
+                  <ol start={4} className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
+                    <li>Bấm nút <strong>Lưu</strong> (biểu tượng đĩa mềm 💾).</li>
+                    <li>Bấm nút <strong>Triển khai</strong> (Deploy) góc trên bên phải &gt; chọn <strong>Tùy chọn triển khai mới</strong> (New deployment).</li>
+                    <li>Ở mục loại hình bánh răng ⚙️, chọn <strong>Ứng dụng web</strong> (Web app):
+                      <ul className="list-disc pl-4 mt-0.5">
+                        <li>Mô tả: <em>NTSell Backup Webhook</em></li>
+                        <li>Thực thi dưới dạng: <strong>Tôi (ple1155n@gmail.com)</strong></li>
+                        <li>Ai có quyền truy cập: <strong>Bất kỳ ai (Anyone)</strong></li>
+                      </ul>
+                    </li>
+                    <li>Bấm <strong>Triển khai</strong>, chọn cấp quyền truy cập tài khoản Google Drive khi được hỏi.</li>
+                    <li>Sao chép <strong>URL ứng dụng web</strong> (có dạng kết thúc bằng <code>/exec</code>) dán vào ô trên và bấm <strong>Lưu Webhook</strong>. Xong! Mọi bản sao lưu sẽ tự động bay vào thư mục Drive của bạn.</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+
             {backupResult && (
-              <div className="p-3 bg-emerald-100/60 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-mono">
-                [OK] Đã hoàn tất đóng gói và đưa vào thư mục Drive: {backupResult.fileName} ({backupResult.sizeKB} KB) lúc {new Date(backupResult.backupTime).toLocaleTimeString('vi-VN')}.
+              <div className={`p-3 rounded-xl border text-xs font-mono ${
+                backupResult.uploadedToDrive 
+                  ? 'bg-emerald-100/70 border-emerald-200 text-emerald-900' 
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                {backupResult.uploadedToDrive ? (
+                  <>✓ [OK] Đã tải trực tiếp vào Google Drive: {backupResult.fileName} ({backupResult.sizeKB} KB) lúc {new Date(backupResult.backupTime).toLocaleTimeString('vi-VN')}.</>
+                ) : (
+                  <>⚠️ [Cục Bộ] Đã đóng gói: {backupResult.fileName} ({backupResult.sizeKB} KB). {backupResult.error ? `Lỗi Drive: ${backupResult.error}` : 'Chưa cấu hình Webhook Drive'}.</>
+                )}
               </div>
             )}
           </div>

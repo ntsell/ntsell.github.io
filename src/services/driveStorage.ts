@@ -67,6 +67,24 @@ export class GoogleDriveStorageService {
     return completedDate < sixMonthsAgo;
   }
 
+  getWebhookUrl(): string {
+    try {
+      const stored = localStorage.getItem('ntsell_drive_webhook_url');
+      if (stored) return stored.trim();
+    } catch {}
+    return ((import.meta as any).env?.VITE_DRIVE_WEBHOOK_URL || '').trim();
+  }
+
+  setWebhookUrl(url: string): void {
+    try {
+      if (url && url.trim()) {
+        localStorage.setItem('ntsell_drive_webhook_url', url.trim());
+      } else {
+        localStorage.removeItem('ntsell_drive_webhook_url');
+      }
+    } catch {}
+  }
+
   /**
    * Tự động sao lưu toàn bộ dữ liệu (Tài khoản, Sản phẩm, Giao dịch, Tin nhắn) về Google Drive
    * Chu kỳ mỗi 24 giờ 1 lần
@@ -76,7 +94,16 @@ export class GoogleDriveStorageService {
     products?: any[];
     transactions?: any[];
     messages?: any[];
-  }): Promise<{ success: boolean; fileName: string; sizeKB: number; backupTime: string; driveUrl: string }> {
+  }): Promise<{
+    success: boolean;
+    uploadedToDrive: boolean;
+    fileName: string;
+    sizeKB: number;
+    backupTime: string;
+    driveUrl: string;
+    message?: string;
+    error?: string;
+  }> {
     const backupTime = new Date().toISOString();
     const dateStr = backupTime.split('T')[0];
     const fileName = `NTSell_Backup_${dateStr}_${Date.now()}.json`;
@@ -107,20 +134,93 @@ export class GoogleDriveStorageService {
     // Cập nhật quota ước lượng
     this.usedQuotaGB += (blob.size / (1024 * 1024 * 1024));
 
+    // Thử đẩy trực tiếp lên Google Drive qua Webhook Apps Script (nếu đã cài đặt)
+    const webhookUrl = this.getWebhookUrl();
+    let uploadedToDrive = false;
+    let uploadError = '';
+
+    if (webhookUrl) {
+      try {
+        const res = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            folderId: this.targetFolderId,
+            fileName,
+            content: jsonString
+          })
+        });
+
+        if (res.ok) {
+          const resData = await res.json().catch(() => null);
+          if (resData && resData.success === false) {
+            uploadError = resData.error || 'Google Apps Script trả về lỗi';
+          } else {
+            uploadedToDrive = true;
+          }
+        } else {
+          uploadError = `HTTP ${res.status}`;
+        }
+      } catch (err: any) {
+        uploadError = err?.message || 'Không thể kết nối đến Webhook Drive';
+      }
+    }
+
     // Lưu mốc thời gian backup gần nhất
     try {
       localStorage.setItem('ntsell_last_drive_backup_time', backupTime);
       localStorage.setItem('ntsell_last_drive_backup_filename', fileName);
+      localStorage.setItem('ntsell_last_drive_backup_status', uploadedToDrive ? 'uploaded' : 'local_only');
     } catch {}
 
     const driveUrl = `https://drive.google.com/drive/folders/${this.targetFolderId}`;
     return {
       success: true,
+      uploadedToDrive,
       fileName,
       sizeKB,
       backupTime,
-      driveUrl
+      driveUrl,
+      error: uploadError || undefined
     };
+  }
+
+  /**
+   * Tải ngay file backup dạng .json về máy tính người dùng
+   */
+  downloadBackupJson(payload: {
+    profiles?: any[];
+    products?: any[];
+    transactions?: any[];
+    messages?: any[];
+  }): void {
+    const backupTime = new Date().toISOString();
+    const dateStr = backupTime.split('T')[0];
+    const fileName = `NTSell_Backup_${dateStr}_${Date.now()}.json`;
+
+    const fullBackupData = {
+      system: 'NTSell Marketplace Database Backup',
+      backupTime,
+      version: '1.0',
+      summary: {
+        profilesCount: payload.profiles?.length || 0,
+        productsCount: payload.products?.length || 0,
+        transactionsCount: payload.transactions?.length || 0,
+        messagesCount: payload.messages?.length || 0
+      },
+      data: payload
+    };
+
+    const jsonString = JSON.stringify(fullBackupData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   /**
@@ -143,12 +243,14 @@ export class GoogleDriveStorageService {
     try {
       const lastBackup = localStorage.getItem('ntsell_last_drive_backup_time');
       const lastFile = localStorage.getItem('ntsell_last_drive_backup_filename');
+      const lastStatus = localStorage.getItem('ntsell_last_drive_backup_status');
       return {
         lastBackupTime: lastBackup || null,
-        lastFileName: lastFile || null
+        lastFileName: lastFile || null,
+        uploadedToDrive: lastStatus === 'uploaded'
       };
     } catch {
-      return { lastBackupTime: null, lastFileName: null };
+      return { lastBackupTime: null, lastFileName: null, uploadedToDrive: false };
     }
   }
 }

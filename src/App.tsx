@@ -350,13 +350,17 @@ export function App() {
             if (m) localMessages = JSON.parse(m);
           } catch {}
 
-          await driveStorage.performBackupToDrive({
+          const res = await driveStorage.performBackupToDrive({
             profiles: localProfiles,
             products,
             transactions,
             messages: localMessages
           });
-          console.log('[Auto-Backup] Đã tự động sao lưu dữ liệu 24h về Google Drive thành công.');
+          if (res.uploadedToDrive) {
+            console.log('[Auto-Backup] Đã tự động sao lưu và đẩy file lên Google Drive thành công:', res.fileName);
+          } else {
+            console.log('[Auto-Backup] Đã lưu bản sao lưu 24h cục bộ:', res.fileName);
+          }
         } catch (err) {
           console.error('[Auto-Backup] Lỗi tự động sao lưu:', err);
         }
