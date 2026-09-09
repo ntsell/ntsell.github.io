@@ -82,7 +82,7 @@ export class GoogleDriveStorageService {
       const stored = localStorage.getItem('ntsell_google_client_id');
       if (stored) return stored.trim();
     } catch {}
-    return ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '').trim();
+    return ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '432431503449-pfekgqa0aj8i3lqtuug61m9qu5f1afi8.apps.googleusercontent.com').trim();
   }
 
   setOAuthClientId(clientId: string): void {
