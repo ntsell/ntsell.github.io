@@ -112,6 +112,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       try {
         localStorage.setItem('ntsell_current_user', JSON.stringify(user));
+        const saved = JSON.parse(localStorage.getItem('ntsell_user_profiles_list') || '[]');
+        if (!saved.some((p: any) => p.id === user.id)) {
+          localStorage.setItem('ntsell_user_profiles_list', JSON.stringify([user, ...saved]));
+        }
       } catch {}
       onLoginSuccess(user);
       onClose();
@@ -120,6 +124,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Fallback nếu có lỗi
       try {
         localStorage.setItem('ntsell_current_user', JSON.stringify(user));
+        const saved = JSON.parse(localStorage.getItem('ntsell_user_profiles_list') || '[]');
+        if (!saved.some((p: any) => p.id === user.id)) {
+          localStorage.setItem('ntsell_user_profiles_list', JSON.stringify([user, ...saved]));
+        }
       } catch {}
       onLoginSuccess(user);
       onClose();

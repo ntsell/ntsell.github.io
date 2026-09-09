@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { fetchProfilesFromSupabase, deleteProfileFromSupabase } from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 import { INITIAL_ROSTER } from '../services/mockData';
 
 export const AdminUsersManagement: React.FC = () => {
@@ -31,14 +32,18 @@ export const AdminUsersManagement: React.FC = () => {
       // 1. Tải từ Supabase
       const dbProfiles = await fetchProfilesFromSupabase();
       
-      // 2. Tải từ LocalStorage
+      // 2. Tải từ LocalStorage (lọc bỏ triệt để các tài khoản clone sinh tự động)
       let localProfiles: UserProfile[] = [];
       try {
         const saved = localStorage.getItem('ntsell_user_profiles_list');
-        if (saved) localProfiles = JSON.parse(saved);
+        if (saved) {
+          localProfiles = (JSON.parse(saved) as UserProfile[]).filter(
+            p => !p.id.startsWith('student-hs-') && !p.id.startsWith('mock-')
+          );
+        }
       } catch {}
 
-      // Mock dữ liệu chuẩn nếu chưa có
+      // Chỉ giữ tài khoản Admin mặc định
       const defaultProfiles: UserProfile[] = [
         {
           id: 'admin-main-1',
@@ -67,33 +72,21 @@ export const AdminUsersManagement: React.FC = () => {
           role: 'admin',
           status: 'active',
           createdAt: '2026-08-05T09:30:00Z'
-        },
-        ...INITIAL_ROSTER.slice(0, 8).map((r, i) => ({
-          id: `student-${r.id}`,
-          encryptedRealName: r.realName,
-          encryptedClassName: r.className,
-          encryptedUsername: `hs_${r.className.toLowerCase()}_${i + 1}`,
-          displayName: `${r.realName} (${r.className})`,
-          email: `${r.id}@student.ntsell.edu.vn`,
-          trustScore: 95 + (i % 5),
-          completedOrdersCount: i * 2,
-          violationCount: 0,
-          role: 'student' as const,
-          status: 'active' as const,
-          createdAt: new Date(Date.now() - (i + 1) * 86400000 * 3).toISOString()
-        }))
+        }
       ];
 
       // Gộp và loại trùng ID
       const map = new Map<string, UserProfile>();
       defaultProfiles.forEach(p => map.set(p.id, p));
       localProfiles.forEach(p => map.set(p.id, p));
+      
+      // Nạp toàn bộ tài khoản thật từ Supabase
       dbProfiles.forEach(p => {
         map.set(p.id, {
           id: p.id,
-          encryptedRealName: p.real_name || p.display_name || 'Học Sinh',
-          encryptedClassName: p.class_name || 'N/A',
-          encryptedUsername: p.username || p.id,
+          encryptedRealName: p.encrypted_real_name || p.real_name || p.display_name || 'Học Sinh',
+          encryptedClassName: p.encrypted_class_name || p.class_name || 'N/A',
+          encryptedUsername: p.username || (p.email ? p.email.split('@')[0] : p.id),
           displayName: p.display_name || 'Học Sinh',
           email: p.email || undefined,
           trustScore: p.trust_score ?? 100,
@@ -105,7 +98,38 @@ export const AdminUsersManagement: React.FC = () => {
         });
       });
 
-      const merged = Array.from(map.values());
+      // Tự động nhận diện các người bán thật đã đăng sản phẩm (như le_tien_hieu)
+      try {
+        const { data: prods } = await supabase.from('products').select('seller_id, seller_display_name, created_at');
+        (prods || []).forEach((prod: any) => {
+          if (prod.seller_id) {
+            const rosterId = prod.seller_id.replace('usr_', '');
+            const matchedRoster = INITIAL_ROSTER.find(r => r.id === rosterId);
+            const existing = map.get(prod.seller_id);
+            if (!existing) {
+              map.set(prod.seller_id, {
+                id: prod.seller_id,
+                encryptedRealName: matchedRoster?.realName || prod.seller_display_name,
+                encryptedClassName: matchedRoster?.className || '11B11',
+                encryptedUsername: prod.seller_display_name,
+                displayName: matchedRoster ? `${matchedRoster.realName} (${matchedRoster.className})` : prod.seller_display_name,
+                email: `${rosterId}@student.ntsell.edu.vn`,
+                trustScore: 100,
+                completedOrdersCount: 1,
+                violationCount: 0,
+                role: 'student',
+                status: 'active',
+                createdAt: prod.created_at || new Date().toISOString()
+              });
+            }
+          }
+        });
+      } catch {}
+
+      // Lọc bỏ triệt để mọi tài khoản clone sinh tự động
+      const merged = Array.from(map.values()).filter(
+        u => !u.id.startsWith('student-hs-') && !u.id.startsWith('mock-')
+      );
       setUsers(merged);
       localStorage.setItem('ntsell_user_profiles_list', JSON.stringify(merged));
     } finally {
