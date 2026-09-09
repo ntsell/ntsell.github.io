@@ -77,6 +77,184 @@ export class GoogleDriveStorageService {
     return completedDate < sixMonthsAgo;
   }
 
+  getOAuthClientId(): string {
+    try {
+      const stored = localStorage.getItem('ntsell_google_client_id');
+      if (stored) return stored.trim();
+    } catch {}
+    return ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '').trim();
+  }
+
+  setOAuthClientId(clientId: string): void {
+    try {
+      if (clientId && clientId.trim()) {
+        localStorage.setItem('ntsell_google_client_id', clientId.trim());
+      } else {
+        localStorage.removeItem('ntsell_google_client_id');
+      }
+    } catch {}
+  }
+
+  getOAuthToken(): string | null {
+    try {
+      const token = localStorage.getItem('ntsell_google_drive_token');
+      const expiry = localStorage.getItem('ntsell_google_drive_token_expiry');
+      if (!token || !expiry) return null;
+      if (Date.now() > Number(expiry)) {
+        localStorage.removeItem('ntsell_google_drive_token');
+        localStorage.removeItem('ntsell_google_drive_token_expiry');
+        return null;
+      }
+      return token;
+    } catch {
+      return null;
+    }
+  }
+
+  setOAuthToken(token: string, expiresInSeconds: number): void {
+    try {
+      localStorage.setItem('ntsell_google_drive_token', token);
+      localStorage.setItem('ntsell_google_drive_token_expiry', String(Date.now() + expiresInSeconds * 1000 - 60000));
+    } catch {}
+  }
+
+  clearOAuthToken(): void {
+    try {
+      localStorage.removeItem('ntsell_google_drive_token');
+      localStorage.removeItem('ntsell_google_drive_token_expiry');
+    } catch {}
+  }
+
+  async loadGisScript(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    if ((window as any).google?.accounts?.oauth2) return;
+
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('google-gis-script');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'google-gis-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = (e) => reject(e);
+      document.head.appendChild(script);
+    });
+  }
+
+  async connectGoogleDrive(): Promise<string> {
+    const clientId = this.getOAuthClientId();
+    if (!clientId) {
+      throw new Error('Chưa cấu hình Google OAuth Client ID');
+    }
+    await this.loadGisScript();
+
+    return new Promise((resolve, reject) => {
+      try {
+        const client = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly',
+          callback: (response: any) => {
+            if (response.error) {
+              reject(new Error(response.error_description || response.error));
+              return;
+            }
+            if (response.access_token) {
+              this.setOAuthToken(response.access_token, response.expires_in || 3600);
+              resolve(response.access_token);
+            } else {
+              reject(new Error('Không nhận được access token từ Google'));
+            }
+          }
+        });
+        client.requestAccessToken();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  async uploadDirectToDrive(
+    accessToken: string,
+    fileName: string,
+    content: string
+  ): Promise<{ success: boolean; fileId?: string; error?: string }> {
+    try {
+      const boundary = '-------NTSellBoundary' + Math.random().toString(36).substring(2);
+      const delimiter = '\r\n--' + boundary + '\r\n';
+      const closeDelim = '\r\n--' + boundary + '--';
+
+      const metadata = {
+        name: fileName,
+        parents: [this.targetFolderId]
+      };
+
+      const multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        content +
+        closeDelim;
+
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartRequestBody
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          this.clearOAuthToken();
+        }
+        return {
+          success: false,
+          error: errData?.error?.message || `Lỗi HTTP ${res.status}`
+        };
+      }
+
+      const fileData = await res.json();
+      return {
+        success: true,
+        fileId: fileData.id
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Lỗi kết nối upload Drive'
+      };
+    }
+  }
+
+  async listDriveFiles(accessToken: string): Promise<Array<{ id: string; name: string; sizeKB: number; createdAt: string; url: string }>> {
+    try {
+      const q = encodeURIComponent(`'${this.targetFolderId}' in parents and trashed = false`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,size,createdTime,webViewLink)&orderBy=createdTime desc`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.files || []).map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        sizeKB: Math.round((Number(f.size) || 0) / 1024),
+        createdAt: f.createdTime,
+        url: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   getWebhookUrl(): string {
     try {
       const stored = localStorage.getItem('ntsell_drive_webhook_url');
@@ -167,35 +345,46 @@ export class GoogleDriveStorageService {
       console.warn('Không thể kết nối Cloud Storage:', err);
     }
 
-    // 2. Thử đẩy tiếp lên Google Drive qua Webhook Apps Script (nếu có cài đặt)
-    const webhookUrl = this.getWebhookUrl();
+    // 2. Thử đẩy trực tiếp lên Google Drive qua OAuth2 (không cần Google Script)
+    const oauthToken = this.getOAuthToken();
     let uploadedToDrive = false;
     let uploadError = '';
 
-    if (webhookUrl) {
-      try {
-        const res = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            folderId: this.targetFolderId,
-            fileName,
-            content: jsonString
-          })
-        });
+    if (oauthToken) {
+      const driveUploadRes = await this.uploadDirectToDrive(oauthToken, fileName, jsonString);
+      if (driveUploadRes.success) {
+        uploadedToDrive = true;
+      } else {
+        uploadError = driveUploadRes.error || 'Lỗi upload Google Drive';
+      }
+    } else {
+      // Nếu chưa có OAuth token, thử qua Webhook Apps Script (nếu có cài đặt)
+      const webhookUrl = this.getWebhookUrl();
+      if (webhookUrl) {
+        try {
+          const res = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              folderId: this.targetFolderId,
+              fileName,
+              content: jsonString
+            })
+          });
 
-        if (res.ok) {
-          const resData = await res.json().catch(() => null);
-          if (resData && resData.success === false) {
-            uploadError = resData.error || 'Google Apps Script trả về lỗi';
+          if (res.ok) {
+            const resData = await res.json().catch(() => null);
+            if (resData && resData.success === false) {
+              uploadError = resData.error || 'Google Apps Script trả về lỗi';
+            } else {
+              uploadedToDrive = true;
+            }
           } else {
-            uploadedToDrive = true;
+            uploadError = `HTTP ${res.status}`;
           }
-        } else {
-          uploadError = `HTTP ${res.status}`;
+        } catch (err: any) {
+          uploadError = err?.message || 'Không thể kết nối đến Webhook Drive';
         }
-      } catch (err: any) {
-        uploadError = err?.message || 'Không thể kết nối đến Webhook Drive';
       }
     }
 

@@ -74,6 +74,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [webhookSavedMsg, setWebhookSavedMsg] = useState(false);
   const [cloudBackups, setCloudBackups] = useState<any[]>([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(() => driveStorage.getOAuthClientId());
+  const [oauthToken, setOauthToken] = useState(() => driveStorage.getOAuthToken());
+  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<any[]>([]);
+  const [loadingDriveFiles, setLoadingDriveFiles] = useState(false);
+
+  const loadDriveFiles = async () => {
+    const token = driveStorage.getOAuthToken();
+    if (!token) return;
+    setLoadingDriveFiles(true);
+    try {
+      const files = await driveStorage.listDriveFiles(token);
+      setDriveFiles(files);
+    } catch {}
+    setLoadingDriveFiles(false);
+  };
 
   const loadCloudBackups = async () => {
     setLoadingBackups(true);
@@ -87,8 +103,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     if (activeTab === 'storage') {
       loadCloudBackups();
+      if (oauthToken) {
+        loadDriveFiles();
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, oauthToken]);
 
   const [cronResult, setCronResult] = useState<any>(null);
   const [isCronRunning, setIsCronRunning] = useState(false);
@@ -1112,141 +1131,210 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
             </div>
 
-            {/* Cấu hình Webhook Google Apps Script để file tự động xuất hiện trong Drive */}
-            <div className="p-3.5 bg-white/95 rounded-xl border border-slate-200 text-xs space-y-2.5">
+            {/* KẾT NỐI GOOGLE DRIVE CHÍNH CHỦ (OAUTH 2.0 - KHÔNG CẦN GOOGLE SCRIPT) */}
+            <div className="p-4 bg-white/95 rounded-2xl border border-blue-200 text-xs space-y-3.5 shadow-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Link2 className="w-4 h-4 text-indigo-600" />
-                  <span className="font-bold text-slate-800">Cấu hình Webhook Google Apps Script (Để file tự xuất hiện trên Drive):</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                    <HardDrive className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      Lưu Trực Tiếp Vào Google Drive 5TB (Chính Chủ ple1155n@gmail.com)
+                      {oauthToken ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✓ Đã Kết Nối
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-300">
+                          Chưa Kết Nối
+                        </span>
+                      )}
+                    </h5>
+                    <p className="text-[11px] text-slate-500">
+                      Tải thẳng tệp sao lưu vào thư mục <strong>NTSell_Storge</strong> bằng quyền tài khoản của bạn (Không qua Google Script).
+                    </p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowWebhookGuide(!showWebhookGuide)}
-                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
-                >
-                  <Info className="w-3.5 h-3.5" />
-                  {showWebhookGuide ? 'Ẩn hướng dẫn cài đặt' : 'Xem hướng dẫn cài đặt 1 phút'}
-                  {showWebhookGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  {oauthToken ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIsBackingUp(true);
+                          try {
+                            let localProfiles = [];
+                            try {
+                              const p = localStorage.getItem('ntsell_user_profiles_list');
+                              if (p) localProfiles = JSON.parse(p);
+                            } catch {}
+                            let localMessages = [];
+                            try {
+                              const m = localStorage.getItem('ntsell_messages');
+                              if (m) localMessages = JSON.parse(m);
+                            } catch {}
+
+                            const res = await driveStorage.performBackupToDrive({
+                              profiles: localProfiles,
+                              products,
+                              transactions,
+                              messages: localMessages
+                            });
+                            setBackupResult(res);
+                            setLastBackupInfo(driveStorage.getLastBackupInfo());
+                            await loadDriveFiles();
+
+                            if (res.uploadedToDrive) {
+                              alert(`✅ Đã tải thẳng file lên Google Drive thành công!\nTên file: ${res.fileName}\nThư mục: NTSell_Storge`);
+                            } else {
+                              alert(`Lỗi upload Drive: ${res.error || 'Vui lòng kiểm tra lại kết nối'}`);
+                            }
+                          } catch (err: any) {
+                            alert('Lỗi: ' + err?.message);
+                          } finally {
+                            setIsBackingUp(false);
+                          }
+                        }}
+                        disabled={isBackingUp}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
+                        {isBackingUp ? 'Đang tải lên Drive...' : 'Tải Lên Google Drive Ngay'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          driveStorage.clearOAuthToken();
+                          setOauthToken(null);
+                          setDriveFiles([]);
+                        }}
+                        className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition"
+                      >
+                        Ngắt kết nối
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsConnectingDrive(true);
+                        try {
+                          const token = await driveStorage.connectGoogleDrive();
+                          setOauthToken(token);
+                          alert('✅ Kết nối Google Drive thành công! Bạn có thể bắt đầu sao lưu thẳng vào Drive.');
+                          await loadDriveFiles();
+                        } catch (err: any) {
+                          alert('Không thể kết nối Google Drive: ' + err?.message);
+                        } finally {
+                          setIsConnectingDrive(false);
+                        }
+                      }}
+                      disabled={isConnectingDrive}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                    >
+                      <HardDrive className="w-3.5 h-3.5" />
+                      {isConnectingDrive ? 'Đang mở đăng nhập...' : '🔗 Kết Nối Google Drive (Đăng nhập 1-click)'}
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex gap-2">
+              {/* Ô cấu hình Client ID */}
+              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs">
+                <span className="text-slate-500 font-medium shrink-0">Google OAuth Client ID:</span>
                 <input
-                  type="url"
-                  placeholder="https://script.google.com/macros/s/.../exec"
-                  value={webhookUrlInput}
-                  onChange={(e) => {
-                    setWebhookUrlInput(e.target.value);
-                    setWebhookSavedMsg(false);
-                  }}
-                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  type="text"
+                  placeholder="xxxx.apps.googleusercontent.com (Tạo trong Google Cloud Console)"
+                  value={googleClientId}
+                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  className="flex-1 w-full px-3 py-1.5 text-[11px] rounded-lg border border-slate-300 font-mono bg-slate-50 focus:bg-white focus:outline-hidden"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    driveStorage.setWebhookUrl(webhookUrlInput);
-                    setWebhookSavedMsg(true);
-                    setTimeout(() => setWebhookSavedMsg(false), 3000);
+                    driveStorage.setOAuthClientId(googleClientId);
+                    alert('Đã lưu Google Client ID thành công!');
                   }}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-[11px] shrink-0"
                 >
-                  Lưu Webhook
+                  Lưu Client ID
                 </button>
               </div>
 
-              {webhookSavedMsg && (
-                <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Đã lưu cấu hình Webhook thành công!
-                </div>
-              )}
-
-              {/* Hướng dẫn chi tiết tạo Google Apps Script */}
-              {showWebhookGuide && (
-                <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
-                  <p className="font-bold text-slate-800">
-                    💡 Tại sao cần Google Apps Script?
-                  </p>
-                  <p className="text-slate-600 leading-relaxed text-[11px]">
-                    Google chặn Service Account ghi file vào thư mục Drive cá nhân (lỗi <code>403 Service Accounts do not have storage quota</code>). Google Apps Script chạy trực tiếp dưới tài khoản <strong>ple1155n@gmail.com</strong> của bạn nên có toàn quyền tạo file vào thư mục <strong>NTSell_Storge</strong> mà không bị giới hạn quota.
-                  </p>
-
-                  <p className="font-bold text-slate-800 pt-1">
-                    Các bước cài đặt (chỉ cần làm 1 lần duy nhất):
-                  </p>
-                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
-                    <li>Đăng nhập tài khoản <strong>ple1155n@gmail.com</strong> và mở trang: <a href="https://script.google.com/home/start" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">script.google.com &rarr;</a></li>
-                    <li>Bấm nút <strong>Dự án mới</strong> (New project).</li>
-                    <li>Xóa toàn bộ mã mặc định và dán đoạn mã bên dưới vào:</li>
-                  </ol>
-
-                  <div className="relative">
-                    <pre className="p-3 bg-slate-900 text-emerald-300 rounded-lg text-[10px] font-mono overflow-x-auto leading-relaxed max-h-48">
-{`function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var targetFolderId = data.folderId || "1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj";
-    var folder = DriveApp.getFolderById(targetFolderId);
-    var file = folder.createFile(data.fileName, data.content, "application/json");
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      fileId: file.getId(),
-      url: file.getUrl()
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}`}
-                    </pre>
+              {/* Danh sách tệp trong thư mục Drive nếu đã kết nối */}
+              {oauthToken && (
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                      📁 Các tệp hiện có trong thư mục Google Drive <strong>NTSell_Storge</strong> ({driveFiles.length} tệp):
+                    </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        const scriptCode = `function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var targetFolderId = data.folderId || "1K5S3IrbKqEchuYzYSXlcGC_o68Jvu4Oj";
-    var folder = DriveApp.getFolderById(targetFolderId);
-    var file = folder.createFile(data.fileName, data.content, "application/json");
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      fileId: file.getId(),
-      url: file.getUrl()
-    })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      error: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}`;
-                        navigator.clipboard.writeText(scriptCode);
-                        setCopiedScript(true);
-                        setTimeout(() => setCopiedScript(false), 2500);
-                      }}
-                      className="absolute top-2 right-2 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[10px] font-bold flex items-center gap-1 transition"
+                      onClick={loadDriveFiles}
+                      disabled={loadingDriveFiles}
+                      className="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1"
                     >
-                      <Copy className="w-3 h-3" />
-                      {copiedScript ? 'Đã sao chép!' : 'Sao chép mã'}
+                      <RefreshCw className={`w-3 h-3 ${loadingDriveFiles ? 'animate-spin' : ''}`} />
+                      Làm mới
                     </button>
                   </div>
 
-                  <ol start={4} className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
-                    <li>Bấm nút <strong>Lưu</strong> (biểu tượng đĩa mềm 💾).</li>
-                    <li>Bấm nút <strong>Triển khai</strong> (Deploy) góc trên bên phải &gt; chọn <strong>Tùy chọn triển khai mới</strong> (New deployment).</li>
-                    <li>Ở mục loại hình bánh răng ⚙️, chọn <strong>Ứng dụng web</strong> (Web app):
-                      <ul className="list-disc pl-4 mt-0.5">
-                        <li>Mô tả: <em>NTSell Backup Webhook</em></li>
-                        <li>Thực thi dưới dạng: <strong>Tôi (ple1155n@gmail.com)</strong></li>
-                        <li>Ai có quyền truy cập: <strong>Bất kỳ ai (Anyone)</strong></li>
-                      </ul>
-                    </li>
-                    <li>Bấm <strong>Triển khai</strong>, chọn cấp quyền truy cập tài khoản Google Drive khi được hỏi.</li>
-                    <li>Sao chép <strong>URL ứng dụng web</strong> (có dạng kết thúc bằng <code>/exec</code>) dán vào ô trên và bấm <strong>Lưu Webhook</strong>. Xong! Mọi bản sao lưu sẽ tự động bay vào thư mục Drive của bạn.</li>
-                  </ol>
+                  {loadingDriveFiles ? (
+                    <p className="text-[11px] text-slate-400 py-1">Đang đọc danh sách từ Google Drive...</p>
+                  ) : driveFiles.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 py-1 italic">Thư mục NTSell_Storge hiện chưa có tệp backup nào.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {driveFiles.map(file => (
+                        <div key={file.id} className="p-2 bg-blue-50/50 rounded-lg flex items-center justify-between text-[11px]">
+                          <span className="font-mono text-slate-800 truncate" title={file.name}>📄 {file.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 text-[10px]">{file.sizeKB} KB</span>
+                            <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                              Mở trên Drive &rarr;
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Hướng dẫn chi tiết tạo Google OAuth Client ID */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                    💡 Hướng dẫn tạo Google OAuth Client ID (1 phút trong Google Cloud Console):
+                  </span>
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 font-bold hover:underline flex items-center gap-1 text-[11px]"
+                  >
+                    Mở Google Cloud Credentials &rarr;
+                  </a>
+                </div>
+
+                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
+                  <li>Đăng nhập tài khoản <strong>ple1155n@gmail.com</strong> vào <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-blue-600 underline font-medium">console.cloud.google.com</a> (chọn dự án <code>first-tine-507913-d0</code>).</li>
+                  <li>Bấm <strong>Create Credentials (Tạo thông tin xác thực)</strong> &gt; Chọn <strong>OAuth client ID (Mã khách hàng OAuth)</strong>.</li>
+                  <li>Mục Loại ứng dụng: Chọn <strong>Web application (Ứng dụng web)</strong>.</li>
+                  <li>Ở mục <em>Authorized JavaScript origins (Nguồn JavaScript được ủy quyền)</em>, bấm <strong>Thêm URI</strong> và dán 2 địa chỉ sau:
+                    <div className="mt-1 space-y-0.5 font-mono text-[10px] bg-slate-100 p-2 rounded border border-slate-200">
+                      <div>https://ntsell.github.io</div>
+                      <div>http://localhost:5173</div>
+                    </div>
+                  </li>
+                  <li>Bấm <strong>Create (Tạo)</strong>. Google sẽ hiển thị dãy <strong>Client ID</strong> (dạng <code>xxxx.apps.googleusercontent.com</code>).</li>
+                  <li>Sao chép dãy Client ID đó dán vào ô <strong>Google OAuth Client ID</strong> ở trên và bấm <strong>Lưu Client ID</strong>.</li>
+                  <li>Cuối cùng bấm nút màu xanh: <strong>"🔗 Kết Nối Google Drive (Đăng nhập 1-click)"</strong> để hoàn tất!</li>
+                </ol>
+              </div>
             </div>
 
             {backupResult && (
