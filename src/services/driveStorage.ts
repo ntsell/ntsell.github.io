@@ -157,7 +157,7 @@ export class GoogleDriveStorageService {
       try {
         const client = (window as any).google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly',
+          scope: 'https://www.googleapis.com/auth/drive.file',
           callback: (response: any) => {
             if (response.error) {
               reject(new Error(response.error_description || response.error));
