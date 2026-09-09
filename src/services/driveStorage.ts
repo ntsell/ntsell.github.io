@@ -282,7 +282,7 @@ export class GoogleDriveStorageService {
     products?: any[];
     transactions?: any[];
     messages?: any[];
-  }): Promise<{
+  }, overrideToken?: string): Promise<{
     success: boolean;
     uploadedToCloud: boolean;
     uploadedToDrive: boolean;
@@ -346,7 +346,7 @@ export class GoogleDriveStorageService {
     }
 
     // 2. Thử đẩy trực tiếp lên Google Drive qua OAuth2 (không cần Google Script)
-    const oauthToken = this.getOAuthToken();
+    const oauthToken = overrideToken || this.getOAuthToken();
     let uploadedToDrive = false;
     let uploadError = '';
 

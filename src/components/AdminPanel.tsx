@@ -91,6 +91,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setLoadingDriveFiles(false);
   };
 
+  const executeBackupToDrive = async (overrideToken?: string) => {
+    setIsBackingUp(true);
+    try {
+      let localProfiles = [];
+      try {
+        const p = localStorage.getItem('ntsell_user_profiles_list');
+        if (p) localProfiles = JSON.parse(p);
+      } catch {}
+      let localMessages = [];
+      try {
+        const m = localStorage.getItem('ntsell_messages');
+        if (m) localMessages = JSON.parse(m);
+      } catch {}
+
+      const res = await driveStorage.performBackupToDrive({
+        profiles: localProfiles,
+        products,
+        transactions,
+        messages: localMessages
+      }, overrideToken);
+
+      setBackupResult(res);
+      setLastBackupInfo(driveStorage.getLastBackupInfo());
+      await loadDriveFiles();
+
+      if (res.uploadedToDrive) {
+        alert(`✅ ĐÃ TẢI LÊN GOOGLE DRIVE THÀNH CÔNG!\n\n📁 Thư mục: NTSell_Storge\n📄 Tệp: ${res.fileName}\n📊 Dung lượng: ${res.sizeKB} KB\n\nBạn mở tab Google Drive NTSell_Storge là sẽ thấy file xuất hiện ngay!`);
+      } else {
+        alert(`⚠️ Lỗi tải lên Google Drive: ${res.error || 'Vui lòng kiểm tra lại kết nối'}`);
+      }
+      return res;
+    } catch (err: any) {
+      alert('Lỗi sao lưu: ' + err?.message);
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
   const loadCloudBackups = async () => {
     setLoadingBackups(true);
     try {
@@ -1162,43 +1200,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <>
                       <button
                         type="button"
-                        onClick={async () => {
-                          setIsBackingUp(true);
-                          try {
-                            let localProfiles = [];
-                            try {
-                              const p = localStorage.getItem('ntsell_user_profiles_list');
-                              if (p) localProfiles = JSON.parse(p);
-                            } catch {}
-                            let localMessages = [];
-                            try {
-                              const m = localStorage.getItem('ntsell_messages');
-                              if (m) localMessages = JSON.parse(m);
-                            } catch {}
-
-                            const res = await driveStorage.performBackupToDrive({
-                              profiles: localProfiles,
-                              products,
-                              transactions,
-                              messages: localMessages
-                            });
-                            setBackupResult(res);
-                            setLastBackupInfo(driveStorage.getLastBackupInfo());
-                            await loadDriveFiles();
-
-                            if (res.uploadedToDrive) {
-                              alert(`✅ Đã tải thẳng file lên Google Drive thành công!\nTên file: ${res.fileName}\nThư mục: NTSell_Storge`);
-                            } else {
-                              alert(`Lỗi upload Drive: ${res.error || 'Vui lòng kiểm tra lại kết nối'}`);
-                            }
-                          } catch (err: any) {
-                            alert('Lỗi: ' + err?.message);
-                          } finally {
-                            setIsBackingUp(false);
-                          }
-                        }}
+                        onClick={() => executeBackupToDrive()}
                         disabled={isBackingUp}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${isBackingUp ? 'animate-spin' : ''}`} />
                         {isBackingUp ? 'Đang tải lên Drive...' : 'Tải Lên Google Drive Ngay'}
@@ -1211,7 +1215,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           setOauthToken(null);
                           setDriveFiles([]);
                         }}
-                        className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition"
+                        className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer"
                       >
                         Ngắt kết nối
                       </button>
@@ -1224,19 +1228,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         try {
                           const token = await driveStorage.connectGoogleDrive();
                           setOauthToken(token);
-                          alert('✅ Kết nối Google Drive thành công! Bạn có thể bắt đầu sao lưu thẳng vào Drive.');
-                          await loadDriveFiles();
+                          // Sau khi đăng nhập thành công -> TỰ ĐỘNG SAO LƯU THẲNG LÊN DRIVE NGAY LẬP TỨC
+                          await executeBackupToDrive(token);
                         } catch (err: any) {
                           alert('Không thể kết nối Google Drive: ' + err?.message);
                         } finally {
                           setIsConnectingDrive(false);
                         }
                       }}
-                      disabled={isConnectingDrive}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                      disabled={isConnectingDrive || isBackingUp}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
                     >
                       <HardDrive className="w-3.5 h-3.5" />
-                      {isConnectingDrive ? 'Đang mở đăng nhập...' : '🔗 Kết Nối Google Drive (Đăng nhập 1-click)'}
+                      {isConnectingDrive ? 'Đang mở đăng nhập...' : isBackingUp ? 'Đang tự động sao lưu lên Drive...' : '🔗 Kết Nối & Tự Động Sao Lưu Vào Drive'}
                     </button>
                   )}
                 </div>
