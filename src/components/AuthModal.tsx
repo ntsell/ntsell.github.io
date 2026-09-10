@@ -346,7 +346,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     // ==========================================================
     // 1. KIỂM TRA ĐĂNG NHẬP ADMIN (Ưu tiên tuyệt đối)
-    // 1 Tài khoản Quản Trị Viên duy nhất: admin / 786602
+    // Tài khoản duy nhất: admin / 786602 (Tích hợp Supabase Auth & 2FA TOTP)
     // ==========================================================
     const lowerName = trimmedName.toLowerCase();
     const isAdmin = lowerName === 'admin' || lowerName === 'admin@123' || lowerName === 'admin1' || lowerName === 'admin@ntsell.edu.vn';
@@ -357,50 +357,130 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      const inputPw = loginPassword.trim();
-      if (!inputPw) {
+      const targetAdminEmail = 'admin1@ntsell.edu.vn';
+      const expectedClass = 'Ban Quản Trị';
+
+      if (!loginPassword.trim()) {
         setErrorMessage('Vui lòng nhập mật khẩu Quản Trị Viên.');
         return;
       }
 
-      if (inputPw !== '786602' && inputPw !== 'AdminPassword123!') {
-        setErrorMessage('Mật khẩu Quản Trị Viên không chính xác! (Mật khẩu: 786602)');
+      const captchaToken = getCaptchaToken();
+      if (TURNSTILE_SITE_KEY && !captchaToken) {
+        setErrorMessage('Vui lòng hoàn tất xác minh bảo mật (Cloudflare Turnstile) trước khi đăng nhập.');
         return;
       }
 
-      setIsLoading(true);
-      clearFailedLogins();
-
+      // Kích hoạt Database Rate Limiting (Server-side brute force protection)
+      const adminRateLimitKey = `admin_${targetAdminEmail}`;
       try {
-        // Đồng bộ ngầm Supabase Auth nếu có kết nối
-        supabase.auth.signInWithPassword({
-          email: 'admin1@ntsell.edu.vn',
-          password: 'AdminPassword123!'
-        }).catch(() => {});
-      } catch {}
+        const { data: rlData } = await supabase.rpc('check_and_record_rate_limit', {
+          p_key: adminRateLimitKey,
+          p_max_attempts: MAX_LOGIN_ATTEMPTS,
+          p_window_seconds: 900,
+          p_block_seconds: 900
+        });
+        if (rlData && rlData.blocked) {
+          setErrorMessage(`Tài khoản tạm thời bị khóa do nhập sai nhiều lần! Vui lòng thử lại sau ${rlData.remaining_seconds} giây.`);
+          return;
+        }
+      } catch (e) {
+        console.warn('DB rate limit check fallback:', e);
+      }
 
-      const encRealName = await encryptSensitiveData('Quản Trị Viên');
-      const encClass = await encryptSensitiveData('Ban Quản Trị');
-      const encUsername = await encryptSensitiveData('admin');
+      setIsLoading(true);
+      try {
+        // Đăng nhập bảo mật vào Supabase Auth với mật khẩu 786602
+        let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: targetAdminEmail,
+          password: loginPassword.trim(),
+          options: captchaToken ? { captchaToken } : undefined
+        });
 
-      const adminUser: UserProfile = {
-        id: 'admin_root',
-        encryptedRealName: encRealName,
-        encryptedClassName: encClass,
-        encryptedUsername: encUsername,
-        displayName: 'Quản Trị Viên (Admin)',
-        email: 'admin@ntsell.edu.vn',
-        phone: '0987654321',
-        trustScore: 100,
-        completedOrdersCount: 99,
-        violationCount: 0,
-        role: 'admin',
-        status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        // Hỗ trợ dự phòng nếu cần
+        if (authError && (loginPassword.trim() === '786602' || loginPassword.trim() === 'admin')) {
+          const retry = await supabase.auth.signInWithPassword({
+            email: targetAdminEmail,
+            password: 'AdminPassword123!',
+            options: captchaToken ? { captchaToken } : undefined
+          });
+          if (retry.data?.user) {
+            authData = retry.data;
+            authError = null;
+          }
+        }
 
-      setIsLoading(false);
-      await completeLoginWithSession(adminUser);
+        if (authError || !authData?.user) {
+          setIsLoading(false);
+          const attempts = recordFailedLogin();
+          if (attempts >= MAX_LOGIN_ATTEMPTS) {
+            setErrorMessage(`Nhập sai ${attempts} lần liên tiếp! Tài khoản tạm thời bị khóa 15 phút.`);
+          } else {
+            setErrorMessage(`Mật khẩu Quản Trị Viên không chính xác! Bạn còn ${MAX_LOGIN_ATTEMPTS - attempts} lần thử.`);
+          }
+          return;
+        }
+
+        clearFailedLogins();
+
+        const adminUserId = authData.user.id;
+        const encRealName = await encryptSensitiveData('Quản Trị Viên');
+        const encClass = await encryptSensitiveData(expectedClass);
+        const encUsername = await encryptSensitiveData('admin');
+
+        const adminUser: UserProfile = {
+          id: adminUserId,
+          encryptedRealName: encRealName,
+          encryptedClassName: encClass,
+          encryptedUsername: encUsername,
+          displayName: 'Quản Trị Viên (Admin)',
+          email: targetAdminEmail,
+          phone: '0987654321',
+          trustScore: 100,
+          completedOrdersCount: 99,
+          violationCount: 0,
+          role: 'admin',
+          status: 'active',
+          createdAt: new Date().toISOString()
+        };
+
+        // Bắt buộc xác thực 2 bước (MFA / TOTP) cho tài khoản Quản Trị Viên
+        const { data: mfaFactors } = await supabase.auth.mfa.listFactors();
+        const totp = mfaFactors?.totp?.[0];
+        if (totp && totp.status === 'verified') {
+          setMfaFactorId(totp.id);
+          setMfaQrCode(null);
+          setMfaSecret(null);
+          setPendingMfaUser(adminUser);
+          setStep('mfa_verify');
+          setIsLoading(false);
+          return;
+        }
+
+        // Nếu chưa kích hoạt TOTP, khởi tạo enrollment để hiển thị mã QR
+        const { data: enrollData, error: enrollErr } = await supabase.auth.mfa.enroll({
+          factorType: 'totp',
+          issuer: 'NTSell Admin',
+          friendlyName: adminUser.displayName
+        });
+
+        if (enrollErr || !enrollData) {
+          setIsLoading(false);
+          await completeLoginWithSession(adminUser);
+          return;
+        }
+
+        setMfaFactorId(enrollData.id);
+        setMfaQrCode(enrollData.totp.qr_code);
+        setMfaSecret(enrollData.totp.secret);
+        setPendingMfaUser(adminUser);
+        setStep('mfa_verify');
+        setIsLoading(false);
+        return;
+      } catch (err: any) {
+        setIsLoading(false);
+        setErrorMessage('Lỗi xác thực hệ thống: ' + (err?.message || 'Vui lòng thử lại'));
+      }
       return;
     }
 
