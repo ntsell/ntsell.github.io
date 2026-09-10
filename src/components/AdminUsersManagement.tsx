@@ -43,35 +43,21 @@ export const AdminUsersManagement: React.FC = () => {
         }
       } catch {}
 
-      // Chỉ giữ tài khoản Admin mặc định
+      // Chỉ giữ tài khoản Admin duy nhất
       const defaultProfiles: UserProfile[] = [
         {
-          id: 'admin-main-1',
-          encryptedRealName: 'Cán Bộ 11B10',
-          encryptedClassName: '11B10',
-          encryptedUsername: 'hocsinh_11b10',
-          displayName: 'Quản Trị Viên (Admin 1)',
-          email: 'admin1@ntsell.edu.vn',
+          id: 'admin_root',
+          encryptedRealName: 'Quản Trị Viên',
+          encryptedClassName: 'Ban Quản Trị',
+          encryptedUsername: 'admin',
+          displayName: 'Quản Trị Viên (Admin)',
+          email: 'admin@ntsell.edu.vn',
           trustScore: 100,
-          completedOrdersCount: 52,
+          completedOrdersCount: 99,
           violationCount: 0,
           role: 'admin',
           status: 'active',
           createdAt: '2026-08-01T08:00:00Z'
-        },
-        {
-          id: 'admin-main-2',
-          encryptedRealName: 'Cán Bộ 12A1',
-          encryptedClassName: '12A1',
-          encryptedUsername: 'admin_12a1',
-          displayName: 'Quản Trị Viên 2 (Admin 2)',
-          email: 'admin2@ntsell.edu.vn',
-          trustScore: 100,
-          completedOrdersCount: 38,
-          violationCount: 0,
-          role: 'admin',
-          status: 'active',
-          createdAt: '2026-08-05T09:30:00Z'
         }
       ];
 
