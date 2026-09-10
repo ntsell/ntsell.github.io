@@ -1,4 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface Card3DTiltProps {
   children: React.ReactNode;
@@ -16,82 +17,84 @@ export const Card3DTilt: React.FC<Card3DTiltProps> = ({
   enableGlare = true
 }) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const [style, setStyle] = useState<React.CSSProperties>({
-    transform: 'perspective(1100px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-    transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease'
-  });
-  const [glareStyle, setGlareStyle] = useState<React.CSSProperties>({
-    opacity: 0
-  });
+  const glareRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const pointerRef = useRef({ x: 0, y: 0, active: false });
+  const reducedMotion = useReducedMotion();
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Chỉ tắt trên màn hình mobile cực nhỏ (<640px)
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      return;
-    }
-    const el = cardRef.current;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const xPct = (x / rect.width) - 0.5;
-    const yPct = (y / rect.height) - 0.5;
-
-    const rotX = -yPct * maxTilt;
-    const rotY = xPct * maxTilt;
-
-    // Tính toán bóng đổ 3D ngược hướng sáng
-    const shadowX = -rotY * 1.5;
-    const shadowY = rotX * 1.8 + 15;
-
-    setStyle({
-      transform: `perspective(1100px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(${scale}, ${scale}, ${scale})`,
-      boxShadow: `${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px 30px -8px rgba(15, 23, 42, 0.22)`,
-      transition: 'transform 0.08s ease-out, box-shadow 0.08s ease-out'
-    });
-
-    if (enableGlare) {
-      const glareX = (x / rect.width) * 100;
-      const glareY = (y / rect.height) * 100;
-      setGlareStyle({
-        opacity: 0.25,
-        background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.15) 35%, transparent 75%)`,
-        transition: 'opacity 0.15s ease-out'
-      });
-    }
-  }, [maxTilt, scale, enableGlare]);
-
-  const handleMouseLeave = useCallback(() => {
-    setStyle({
-      transform: 'perspective(1100px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      boxShadow: 'none',
-      transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.5s ease'
-    });
-    setGlareStyle({
-      opacity: 0,
-      transition: 'opacity 0.4s ease-out'
-    });
+  useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
   }, []);
+
+  const resetCard = () => {
+    const card = cardRef.current;
+    const glare = glareRef.current;
+    if (!card) return;
+
+    pointerRef.current.active = false;
+    card.style.transition = 'transform 0.48s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.48s ease';
+    card.style.transform = 'perspective(1100px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+    card.style.boxShadow = 'none';
+    card.style.willChange = 'auto';
+
+    if (glare) {
+      glare.style.opacity = '0';
+      glare.style.transition = 'opacity 0.3s ease-out';
+    }
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (reducedMotion || window.innerWidth < 640) return;
+
+    const card = cardRef.current;
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    pointerRef.current.x = (event.clientX - rect.left) / rect.width - 0.5;
+    pointerRef.current.y = (event.clientY - rect.top) / rect.height - 0.5;
+    pointerRef.current.active = true;
+
+    // Coalesce high-frequency pointer events into one composited update/frame.
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      const currentCard = cardRef.current;
+      if (!currentCard || !pointerRef.current.active) return;
+
+      const { x, y } = pointerRef.current;
+      const rotX = -y * maxTilt;
+      const rotY = x * maxTilt;
+      const shadowX = -rotY * 1.5;
+      const shadowY = rotX * 1.8 + 15;
+
+      currentCard.style.transition = 'transform 0.12s ease-out, box-shadow 0.12s ease-out';
+      currentCard.style.willChange = 'transform, box-shadow';
+      currentCard.style.transform = `perspective(1100px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(${scale}, ${scale}, ${scale})`;
+      currentCard.style.boxShadow = `${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px 30px -8px rgba(15, 23, 42, 0.22)`;
+
+      if (enableGlare && glareRef.current) {
+        glareRef.current.style.opacity = '0.25';
+        glareRef.current.style.background = `radial-gradient(circle at ${(x + 0.5) * 100}% ${(y + 0.5) * 100}%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.15) 35%, transparent 75%)`;
+      }
+    });
+  };
 
   return (
     <div
       ref={cardRef}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        ...style,
-        transformStyle: 'preserve-3d',
-        willChange: 'transform, box-shadow'
-      }}
-      className={`relative ${className}`}
+      onMouseLeave={resetCard}
+      style={{ transformStyle: 'preserve-3d' }}
+      className={`card-tilt-root relative ${className}`}
     >
       {children}
       {enableGlare && (
         <div
+          ref={glareRef}
           className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden z-30"
-          style={glareStyle}
+          style={{ opacity: 0 }}
         />
       )}
     </div>

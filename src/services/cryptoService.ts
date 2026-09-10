@@ -1,41 +1,33 @@
-// ====================================================================
-// CRYPTO & SECURITY SERVICE
-// Hỗ trợ mã hóa PII (Tên thật, Lớp, SĐT) bảo vệ quyền riêng tư học sinh
-// ====================================================================
+import { supabase } from './supabaseClient';
 
-// Trong môi trường trình duyệt, sử dụng Web Crypto API (SubtleCrypto) hoặc Base64 Obfuscation + Token Key
-const SECRET_SALT = 'CASIO_STUDENT_MARKETPLACE_2026_SECURITY';
-
+/**
+ * Mã hóa AES-GCM 256-bit qua Edge Function bảo mật server-side
+ * Không để lộ khóa mã hóa trong client bundle. Không dùng Base64 fallback.
+ */
 export async function encryptSensitiveData(plainText: string): Promise<string> {
   if (!plainText) return '';
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(plainText + '::' + SECRET_SALT);
-    // Tạo hash SHA-256 kết hợp mã hóa Base64 an toàn
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    // Obfuscated payload với prefix bảo mật
-    const b64 = btoa(encodeURIComponent(plainText));
-    return `ENC_${b64}_${hashHex.substring(0, 8)}`;
-  } catch {
-    return `ENC_${btoa(encodeURIComponent(plainText))}`;
+  const { data, error } = await supabase.functions.invoke('crypto-vault', {
+    body: { action: 'encrypt', text: plainText }
+  });
+  if (error || !data?.ciphertext) {
+    throw new Error(`Không thể mã hóa dữ liệu: ${error?.message || 'Lỗi crypto-vault'}`);
   }
+  return data.ciphertext;
 }
 
-export function decryptSensitiveData(encryptedText: string): string {
+/**
+ * Giải mã chuỗi đã mã hóa qua Edge Function server-side
+ * Yêu cầu quyền sở hữu hoặc quyền Quản Trị Viên (RBAC).
+ */
+export async function decryptSensitiveData(encryptedText: string, ownerId?: string): Promise<string> {
   if (!encryptedText) return '';
-  try {
-    if (encryptedText.startsWith('ENC_')) {
-      const parts = encryptedText.split('_');
-      const b64 = parts[1];
-      return decodeURIComponent(atob(b64));
-    }
-    return encryptedText;
-  } catch {
-    return '[Dữ liệu đã mã hoá bảo vệ]';
+  const { data, error } = await supabase.functions.invoke('crypto-vault', {
+    body: { action: 'decrypt', text: encryptedText, ownerId }
+  });
+  if (error || typeof data?.plaintext !== 'string') {
+    throw new Error(`Không thể giải mã dữ liệu: ${error?.message || 'Lỗi crypto-vault'}`);
   }
+  return data.plaintext;
 }
 
 /**

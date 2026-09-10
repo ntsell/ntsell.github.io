@@ -18,8 +18,8 @@ export const FloatingShapesCSS: React.FC = () => {
 
       {/* 2. Vòng nhẫn hào quang 3D Torus mô phỏng (Ring 2) */}
       <div 
-        className="absolute top-1/3 -left-10 w-44 h-44 rounded-full border-8 border-sky-400/25 shadow-lg shadow-sky-500/20 transform rotate-45 animate-spin"
-        style={{ animationDuration: '40s', borderStyle: 'double' }}
+        className="floating-ring absolute top-1/3 -left-10 w-44 h-44 rounded-full border-8 border-sky-400/25 shadow-lg shadow-sky-500/20 transform rotate-45"
+        style={{ borderStyle: 'double' }}
       />
 
       {/* 3. Khối đa diện 3D toán học bồng bềnh góc dưới phải */}
@@ -29,8 +29,7 @@ export const FloatingShapesCSS: React.FC = () => {
 
       {/* 4. Khối cầu phát sáng nổi 3D */}
       <div 
-        className="absolute -top-12 left-1/4 w-36 h-36 rounded-full bg-gradient-to-tr from-blue-600/30 via-sky-400/20 to-transparent blur-md border border-sky-300/30 animate-pulse"
-        style={{ animationDuration: '6s' }}
+        className="floating-orb absolute -top-12 left-1/4 w-36 h-36 rounded-full bg-gradient-to-tr from-blue-600/30 via-sky-400/20 to-transparent blur-md border border-sky-300/30"
       />
 
       {/* 5. Quyển sách học đường 3D CSS */}
@@ -50,7 +49,7 @@ export const FloatingShapesCSS: React.FC = () => {
       </div>
 
       {/* 6. Mấy mảnh giấy nháp bài thi toán học bay lượn */}
-      <div className="absolute top-10 right-1/3 w-16 h-20 bg-white/80 backdrop-blur rounded shadow-lg border border-white/40 transform rotate-12 flex flex-col gap-1.5 p-2 opacity-80 animate-bounce" style={{ animationDuration: '4s' }}>
+      <div className="floating-note absolute top-10 right-1/3 w-16 h-20 bg-white/80 backdrop-blur rounded shadow-lg border border-white/40 transform rotate-12 flex flex-col gap-1.5 p-2 opacity-80">
         <div className="w-full h-0.5 bg-blue-400/70 rounded" />
         <div className="w-4/5 h-0.5 bg-blue-300/60 rounded" />
         <div className="w-full h-0.5 bg-blue-400/70 rounded" />

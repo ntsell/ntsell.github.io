@@ -13,8 +13,7 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
-  X,
-  Clock
+  X
 } from 'lucide-react';
 import { UserProfile, AppNotification } from '../types';
 import { BroadcastDotBanner } from './BroadcastDotBanner';
@@ -405,7 +404,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
-              Đăng Bán Máy
+              Đăng Bán & Chia Sẻ
             </button>
 
             {currentUser ? (

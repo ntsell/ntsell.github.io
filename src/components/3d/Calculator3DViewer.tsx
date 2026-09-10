@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { RotateCw, ShieldCheck, Eye, Sparkles } from 'lucide-react';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface CalculatorModelProps {
   colorScheme?: 'black' | 'white';
@@ -125,7 +126,11 @@ export const Calculator3DViewer: React.FC<Calculator3DViewerProps> = ({
   productTitle = '',
   className = ''
 }) => {
-  const [autoRotate, setAutoRotate] = useState(true);
+  const reducedMotion = useReducedMotion();
+  const [autoRotate, setAutoRotate] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
   const controlsRef = useRef<any>(null);
 
   const isWhite = productTitle.toLowerCase().includes('trắng') || productTitle.toLowerCase().includes('white');
@@ -146,21 +151,21 @@ export const Calculator3DViewer: React.FC<Calculator3DViewerProps> = ({
   };
 
   return (
-    <div className={`relative bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl ${className}`}>
+    <div className={`three-viewer-shell relative bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl ${className}`}>
       {/* Huy hiệu xem 3D */}
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-        <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+        <Sparkles className="w-3.5 h-3.5 text-amber-400 motion-gentle-pulse" />
         <span>Tương tác 3D 360°</span>
       </div>
 
       {/* Hướng dẫn tương tác */}
-      <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-slate-300 text-[10px]">
+      <div className="three-viewer-hint absolute bottom-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-slate-300 text-[10px]">
         <Eye className="w-3 h-3 text-sky-400" />
         <span>Kéo chuột hoặc ngón tay để xoay 360°</span>
       </div>
 
       {/* Toolbar phím tắt góc phải */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+      <div className="three-viewer-toolbar absolute top-3 right-3 z-10 flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => setAutoRotate(!autoRotate)}
@@ -171,7 +176,7 @@ export const Calculator3DViewer: React.FC<Calculator3DViewerProps> = ({
           }`}
           title="Bật/Tắt tự động xoay"
         >
-          <RotateCw className={`w-3 h-3 ${autoRotate ? 'animate-spin' : ''}`} />
+          <RotateCw className={`w-3 h-3 ${autoRotate && !reducedMotion ? 'motion-spin-slow' : ''}`} />
           <span>Tự xoay</span>
         </button>
 
@@ -198,9 +203,11 @@ export const Calculator3DViewer: React.FC<Calculator3DViewerProps> = ({
       {/* Khung Canvas WebGL */}
       <div className="w-full h-72 sm:h-80 cursor-grab active:cursor-grabbing">
         <Canvas
+          frameloop={autoRotate && !reducedMotion ? 'always' : 'demand'}
           camera={{ position: [0, 0, 5], fov: 45 }}
-          dpr={[1, 1.5]}
-          gl={{ antialias: true, alpha: true }}
+          dpr={[1, 1.3]}
+          performance={{ min: 0.55, max: 1, debounce: 180 }}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         >
           <ambientLight intensity={1.2} />
           <directionalLight position={[5, 8, 5]} intensity={1.5} color="#ffffff" />
@@ -216,7 +223,9 @@ export const Calculator3DViewer: React.FC<Calculator3DViewerProps> = ({
             enableZoom={true}
             minDistance={3.2}
             maxDistance={7.5}
-            autoRotate={autoRotate}
+            enableDamping
+            dampingFactor={0.08}
+            autoRotate={autoRotate && !reducedMotion}
             autoRotateSpeed={1.5}
           />
         </Canvas>

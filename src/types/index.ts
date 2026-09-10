@@ -46,6 +46,23 @@ export interface VerificationRequest {
   createdAt: string;
 }
 
+export type ProductCategory = 'calculator' | 'document';
+export type DocumentFormat = 'paper' | 'digital';
+export type DocumentSubject = 
+  | 'Toán'
+  | 'Ngữ Văn'
+  | 'Tiếng Anh'
+  | 'Vật Lý'
+  | 'Hóa Học'
+  | 'Sinh Học'
+  | 'Lịch Sử'
+  | 'Địa Lý'
+  | 'Tin Học'
+  | 'GDCD / KTPL'
+  | 'Tổng Hợp / ĐGNL';
+
+export type DocumentGrade = 'Lớp 10' | 'Lớp 11' | 'Lớp 12' | 'Ôn Thi THPT' | 'Ôn Thi ĐGNL/ĐGTD';
+
 export type ProductCondition = 'brand_new' | 'like_new' | 'used_good' | 'needs_repair';
 export type ProductStatus = 'pending_admin' | 'active' | 'reserved' | 'sold' | 'rejected' | 'flagged' | 'requires_edit';
 export type SNStatus = 'unverified' | 'genuine' | 'suspicious' | 'counterfeit';
@@ -60,16 +77,24 @@ export interface Product {
   price: number;
   condition: ProductCondition;
   description: string;
-  serialNumber: string;
+  serialNumber?: string;
   maskedSerialNumber?: string;
   encryptedSerialNumber?: string;
-  snStatus: SNStatus;
+  snStatus?: SNStatus;
   imageUrls: string[];
   demoVideoUrl?: string;
   tradeLocation: string;
   status: ProductStatus;
   adminNotes?: string;
   createdAt: string;
+
+  // Thuộc tính mở rộng cho phân hệ Tài Liệu Học Tập
+  category?: ProductCategory;
+  subject?: string;
+  grade?: string;
+  docFormat?: DocumentFormat;
+  pageCount?: number;
+  fileUrl?: string;
 }
 
 export interface ChatMessage {

@@ -26,3 +26,7 @@ dist-ssr
 
 key-google-service.json
 *.json.key
+
+# Sensitive School Rosters & Student Personal Data (Nghị định 13/2023/NĐ-CP)
+danh-sach-lop/
+*.pdf

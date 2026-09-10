@@ -5,11 +5,7 @@ import {
   X, 
   AlertTriangle, 
   Users, 
-  Video, 
   HardDrive, 
-  FileCheck, 
-  Search, 
-  Trash2, 
   RefreshCw,
   Clock,
   Sparkles,
@@ -18,20 +14,17 @@ import {
   CheckCircle2,
   XCircle,
   Tag,
-  Layers,
-  ExternalLink,
   Ban,
-  HelpCircle,
   Edit3,
   Laptop
 } from 'lucide-react';
-import { Product, Transaction, Dispute, VerificationRequest, UserProfile } from '../types';
+import { Product, Transaction, Dispute, VerificationRequest } from '../types';
 import { driveStorage } from '../services/driveStorage';
 import { runAutoDeleteVideosJob } from '../services/autoDeleteWorker';
 import { AdminSessions } from './AdminSessions';
 import { AdminUsersManagement } from './AdminUsersManagement';
-import { publishBroadcastToSupabase } from '../services/supabaseService';
-import { Megaphone, Send, Database, Download, Copy, ChevronDown, ChevronUp, Link2, Info } from 'lucide-react';
+import { publishBroadcastToSupabase, fetchAuditLogs } from '../services/supabaseService';
+import { Megaphone, Send, Download } from 'lucide-react';
 
 interface AdminPanelProps {
   products: Product[];
@@ -56,8 +49,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onResolveDispute,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster' | 'sessions' | 'users' | 'broadcast'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'active_products' | 'disputes' | 'storage' | 'roster' | 'sessions' | 'users' | 'broadcast' | 'audit_logs'>('products');
   
+  // Audit Logs state
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
+  const loadAuditLogs = async () => {
+    setLoadingAuditLogs(true);
+    try {
+      const data = await fetchAuditLogs(100);
+      setAuditLogs(data || []);
+    } catch (err) {
+      console.error('Failed to load audit logs:', err);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'audit_logs') {
+      loadAuditLogs();
+    }
+  }, [activeTab]);
+
   // State Thông Báo Toàn Web (Broadcast)
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcastDuration, setBroadcastDuration] = useState(10);
@@ -68,10 +83,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [lastBackupInfo, setLastBackupInfo] = useState(() => driveStorage.getLastBackupInfo());
   const [backupResult, setBackupResult] = useState<any>(null);
-  const [webhookUrlInput, setWebhookUrlInput] = useState(() => driveStorage.getWebhookUrl());
-  const [showWebhookGuide, setShowWebhookGuide] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
-  const [webhookSavedMsg, setWebhookSavedMsg] = useState(false);
   const [googleClientId, setGoogleClientId] = useState(() => driveStorage.getOAuthClientId());
   const [oauthToken, setOauthToken] = useState(() => driveStorage.getOAuthToken());
   const [isConnectingDrive, setIsConnectingDrive] = useState(false);
@@ -157,7 +168,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     onRefreshProducts?.();
-  }, []);
+  }, [onRefreshProducts]);
 
   const pendingRequests = verificationRequests.filter(r => r.status === 'pending');
 
@@ -334,6 +345,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Laptop className="w-3.5 h-3.5" />
           Phiên Thiết Bị
         </button>
+
+        <button
+          onClick={() => setActiveTab('audit_logs')}
+          className={`py-3 px-3.5 border-b-2 shrink-0 transition flex items-center gap-1.5 ${
+            activeTab === 'audit_logs' ? 'border-violet-600 text-violet-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          Nhật Ký Kiểm Toán (Audit)
+        </button>
       </div>
 
 
@@ -421,9 +442,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   {/* Cột 2: Thông số máy & Giá bán */}
                   <div className="md:col-span-4 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] uppercase font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
-                        {p.model}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
+                        p.category === 'document'
+                          ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                          : 'text-indigo-700 bg-indigo-50 border border-indigo-200'
+                      }`}>
+                        {p.category === 'document' ? `Tài liệu: ${p.subject || ''} ${p.grade || ''}` : p.model}
                       </span>
                       <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                         {p.condition === 'like_new' ? 'Như mới (99%)' : p.condition === 'brand_new' ? 'Mới 100%' : 'Đã qua sử dụng'}
@@ -433,13 +458,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <h4 className="font-extrabold text-slate-900 text-base">{p.title}</h4>
                     
                     <p className="text-sm font-black text-blue-600">
-                      {p.price.toLocaleString('vi-VN')} đ
+                      {p.price === 0 ? <span className="text-emerald-600">0 đ (Tặng miễn phí)</span> : `${p.price.toLocaleString('vi-VN')} đ`}
                     </p>
 
                     <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 font-mono space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-400 font-sans">Mã S/N:</span>
-                        <span className="font-bold text-indigo-700">{p.serialNumber}</span>
+                        <span className="text-[11px] text-slate-400 font-sans">{p.category === 'document' ? 'Phân loại:' : 'Mã S/N:'}</span>
+                        <span className="font-bold text-indigo-700">
+                          {p.category === 'document' ? (p.docFormat === 'digital' ? 'File PDF điện tử' : 'Bản in giấy') : (p.serialNumber || 'N/A')}
+                        </span>
                       </div>
                       {p.description && (
                         <p className="text-[11px] text-slate-600 font-sans truncate pt-1 border-t border-slate-200/60">
@@ -538,12 +565,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="font-bold text-blue-600 text-sm">{previewProduct.price.toLocaleString('vi-VN')} đ</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">Dòng máy:</span>
-                    <span className="font-bold text-slate-800">{previewProduct.model}</span>
+                    <span className="text-slate-400 block">{previewProduct.category === 'document' ? 'Môn / Lớp:' : 'Dòng máy:'}</span>
+                    <span className="font-bold text-slate-800">
+                      {previewProduct.category === 'document' 
+                        ? `${previewProduct.subject || 'Chưa rõ'} - ${previewProduct.grade || ''}`
+                        : previewProduct.model}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">Mã Serial Number:</span>
-                    <span className="font-mono font-bold text-indigo-700">{previewProduct.serialNumber}</span>
+                    <span className="text-slate-400 block">{previewProduct.category === 'document' ? 'Định dạng:' : 'Mã Serial Number:'}</span>
+                    <span className="font-mono font-bold text-indigo-700">
+                      {previewProduct.category === 'document' 
+                        ? (previewProduct.docFormat === 'digital' ? 'File PDF tải về' : 'Bản in giấy')
+                        : (previewProduct.serialNumber || 'N/A')}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block">Người đăng bán:</span>
@@ -1473,6 +1508,87 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Content 9: Nhật Ký Kiểm Toán (Audit Logs) */}
+      {activeTab === 'audit_logs' && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6 shadow-xs">
+          <div className="border-b border-slate-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-violet-600" />
+                Nhật Ký Kiểm Toán Hệ Thống (Audit Logs)
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Ghi nhận tự động toàn bộ thao tác nhạy cảm của Admin (Duyệt/Gỡ bài, Xóa người dùng, Phát thông báo...) phục vụ kiểm tra an ninh và tuân thủ Nghị định 13/2023/NĐ-CP.
+              </p>
+            </div>
+            <button
+              onClick={loadAuditLogs}
+              disabled={loadingAuditLogs}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingAuditLogs ? 'animate-spin' : ''}`} />
+              Làm mới
+            </button>
+          </div>
+
+          {loadingAuditLogs ? (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-violet-500" />
+              Đang tải nhật ký kiểm toán...
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              <ShieldCheck className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              Chưa có bản ghi nhật ký kiểm toán nào.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="py-3 px-4">Thời gian</th>
+                    <th className="py-3 px-4">Quản Trị Viên</th>
+                    <th className="py-3 px-4">Hành Động</th>
+                    <th className="py-3 px-4">Đối Tượng</th>
+                    <th className="py-3 px-4">Chi Tiết</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {auditLogs.map((log) => {
+                    let actionColor = 'bg-slate-100 text-slate-700';
+                    if (log.action.includes('approve')) actionColor = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                    else if (log.action.includes('reject') || log.action.includes('takedown') || log.action.includes('delete')) actionColor = 'bg-rose-50 text-rose-700 border border-rose-200';
+                    else if (log.action.includes('broadcast')) actionColor = 'bg-amber-50 text-amber-700 border border-amber-200';
+
+                    return (
+                      <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[11px] text-slate-600 truncate max-w-[120px]">
+                          {log.admin_id ? log.admin_id.slice(0, 8) + '...' : 'System'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] ${actionColor}`}>
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 text-[11px]">
+                          <span className="font-semibold">{log.target_type}</span>: {log.target_id || 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500 text-[11px] max-w-[280px] truncate font-mono">
+                          {typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ import path from 'path'
 
 // Simple local API plugin for Vite to share products across normal and incognito windows
 function localApiPlugin() {
-  const dbPath = path.resolve(__dirname, 'src/services/productsDatabase.json');
+  const dbPath = path.resolve(import.meta.dirname, 'src/services/productsDatabase.json');
   
   // In-memory rate limiting map: ip -> { count, resetTime }
   const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -148,7 +148,7 @@ function localApiPlugin() {
         // Đồng bộ tin nhắn & hội thoại tức thời giữa các tài khoản & trình duyệt
         // =========================================================
         if (req.url === '/api/conversations') {
-          const convoDbPath = path.resolve(__dirname, 'src/services/conversationsDatabase.json');
+          const convoDbPath = path.resolve(import.meta.dirname, 'src/services/conversationsDatabase.json');
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('X-Content-Type-Options', 'nosniff');
           res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -193,7 +193,7 @@ function localApiPlugin() {
         }
 
         if (req.url === '/api/messages') {
-          const msgDbPath = path.resolve(__dirname, 'src/services/messagesDatabase.json');
+          const msgDbPath = path.resolve(import.meta.dirname, 'src/services/messagesDatabase.json');
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('X-Content-Type-Options', 'nosniff');
           res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -242,7 +242,7 @@ function localApiPlugin() {
         // Đồng bộ thông báo hệ thống, tin nhắn mới, admin approve/reject
         // =========================================================
         if (req.url === '/api/notifications') {
-          const notifDbPath = path.resolve(__dirname, 'src/services/notificationsDatabase.json');
+          const notifDbPath = path.resolve(import.meta.dirname, 'src/services/notificationsDatabase.json');
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('X-Content-Type-Options', 'nosniff');
           res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');

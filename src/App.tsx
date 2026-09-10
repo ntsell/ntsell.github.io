@@ -18,8 +18,7 @@ import { terminateCurrentSession } from './services/sessionService';
 import { 
   INITIAL_ROSTER, 
   INITIAL_PRODUCTS, 
-  INITIAL_TRANSACTIONS, 
-  CURRENT_USER_MOCK 
+  INITIAL_TRANSACTIONS 
 } from './services/mockData';
 import { Product, Transaction, Dispute, ChatMessage, Conversation, UserProfile, AppNotification } from './types';
 import { 
@@ -31,8 +30,7 @@ import {
   upsertConversationToSupabase,
   fetchMessagesFromSupabase,
   insertMessageToSupabase,
-  fetchNotificationsFromSupabase,
-  insertNotificationToSupabase
+  fetchNotificationsFromSupabase
 } from './services/supabaseService';
 import { supabase } from './services/supabaseClient';
 import { driveStorage } from './services/driveStorage';
@@ -281,7 +279,7 @@ export function App() {
           localStorage.setItem('ntsell_products', JSON.stringify(freshProds));
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, async () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, async () => {
         const freshMsgs = await fetchMessagesFromSupabase();
         if (Array.isArray(freshMsgs)) {
           setMessages(freshMsgs);
@@ -331,7 +329,7 @@ export function App() {
       supabase.removeChannel(realtimeChannel);
       clearInterval(pollInterval);
     };
-  }, []);
+  }, [currentUser?.id]);
 
   // Tự động kiểm tra và sao lưu về Google Drive mỗi 24 giờ một lần (Background Backup)
   React.useEffect(() => {
@@ -676,12 +674,13 @@ export function App() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#e9edf2] flex flex-col font-sans text-slate-900 relative">
-      {/* Lớp hạt sáng môi trường khuếch tán để hiệu ứng kính mờ (frosted glass) khúc xạ lung linh */}
+      {/* Lớp hạt sáng môi trường khuếch tán đa tầng để hiệu ứng kính mờ (frosted glass) khúc xạ lung linh */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-blue-300/30 blur-3xl" />
-        <div className="absolute top-1/4 -right-24 w-88 h-88 rounded-full bg-indigo-300/25 blur-3xl" />
-        <div className="absolute bottom-32 left-1/5 w-96 h-96 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute top-2/3 right-1/4 w-80 h-80 rounded-full bg-purple-200/25 blur-3xl" />
+        <div className="ambient-drift-1 absolute -top-40 -left-40 w-[32rem] h-[32rem] rounded-full bg-blue-400/25 blur-[100px]" />
+        <div className="ambient-drift-2 absolute top-1/4 -right-32 w-[30rem] h-[30rem] rounded-full bg-indigo-400/25 blur-[110px]" />
+        <div className="ambient-drift-1 absolute bottom-24 left-1/6 w-[28rem] h-[28rem] rounded-full bg-sky-300/30 blur-[90px]" />
+        <div className="ambient-drift-2 absolute top-2/3 right-1/4 w-[26rem] h-[26rem] rounded-full bg-purple-400/20 blur-[100px]" />
+        <div className="ambient-drift-1 absolute top-1/2 left-1/3 w-[22rem] h-[22rem] rounded-full bg-emerald-300/15 blur-[80px]" />
       </div>
 
       {/* Navigation Header */}
@@ -904,23 +903,41 @@ export function App() {
           )}
 
           {currentTab === 'admin' && (
-            <AdminPanel
-              products={products}
-              transactions={transactions}
-              disputes={disputes}
-              onApproveProduct={handleApproveProduct}
-              onRequestEditProduct={handleRequestEditProduct}
-              onRejectProduct={handleRejectProduct}
-              onTakeDownProduct={handleTakeDownProduct}
-              onResolveDispute={(id, res) => setDisputes(disputes.map(d => d.id === id ? { ...d, status: res } : d))}
-              onRefreshProducts={async () => {
-                const fresh = await fetchProductsFromSupabase();
-                if (Array.isArray(fresh)) {
-                  setProducts(fresh);
-                  localStorage.setItem('ntsell_products', JSON.stringify(fresh));
-                }
-              }}
-            />
+            currentUser?.role === 'admin' ? (
+              <AdminPanel
+                products={products}
+                transactions={transactions}
+                disputes={disputes}
+                onApproveProduct={handleApproveProduct}
+                onRequestEditProduct={handleRequestEditProduct}
+                onRejectProduct={handleRejectProduct}
+                onTakeDownProduct={handleTakeDownProduct}
+                onResolveDispute={(id, res) => setDisputes(disputes.map(d => d.id === id ? { ...d, status: res } : d))}
+                onRefreshProducts={async () => {
+                  const fresh = await fetchProductsFromSupabase();
+                  if (Array.isArray(fresh)) {
+                    setProducts(fresh);
+                    localStorage.setItem('ntsell_products', JSON.stringify(fresh));
+                  }
+                }}
+              />
+            ) : (
+              <div className="max-w-md mx-auto my-16 p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Từ chối truy cập (Access Denied)</h3>
+                <p className="text-xs text-slate-500 mb-6">
+                  Trang quản trị chỉ dành riêng cho tài khoản Quản Trị Viên (Admin) được cấp quyền.
+                </p>
+                <button
+                  onClick={() => setCurrentTab('home')}
+                  className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Quay về Trang chủ
+                </button>
+              </div>
+            )
           )}
         </div>
       </main>

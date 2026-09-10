@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, 
-  ShieldCheck, 
   Lock, 
   MessageSquare, 
   Calendar,

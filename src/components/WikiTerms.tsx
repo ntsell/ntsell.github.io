@@ -6,7 +6,8 @@ import {
   Scale, 
   HelpCircle, 
   Clock, 
-  Lock 
+  Lock,
+  BookOpen
 } from 'lucide-react';
 
 export const WikiTerms: React.FC = () => {
@@ -20,7 +21,7 @@ export const WikiTerms: React.FC = () => {
           Điều Khoản, Quyền Lợi & Miễn Trách Nhiệm
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Quy chế hoạt động của sàn trao đổi máy tính học sinh theo nguyên tắc an toàn, minh bạch và tôn trọng quyền riêng tư.
+          Quy chế hoạt động của sàn trao đổi đồ dùng & tài liệu học tập học sinh theo nguyên tắc an toàn, minh bạch và tôn trọng quyền riêng tư.
         </p>
       </div>
 
@@ -66,16 +67,60 @@ export const WikiTerms: React.FC = () => {
         </div>
       </div>
 
-      {/* Bảo mật thông tin học sinh */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-3 shadow-xs">
+      {/* Bảo mật thông tin học sinh & Nghị định 13/2023/NĐ-CP */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4 shadow-xs">
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
           <Lock className="w-4 h-4 text-indigo-600" />
-          4. Chính Sách Bảo Vệ Dữ Liệu Cá Nhân (GDPR & PII)
+          4. Chính Sách Bảo Vệ Dữ Liệu Cá Nhân (Tuân Thủ Nghị Định 13/2023/NĐ-CP)
+        </h2>
+        
+        <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+          <div>
+            <h3 className="font-bold text-slate-800 mb-1">4.1. Nguyên tắc thu thập và phân loại dữ liệu</h3>
+            <p>• <b>Dữ liệu cá nhân cơ bản:</b> Họ tên, lớp, mã số học sinh, email và số điện thoại chỉ được thu thập nhằm mục đích xác thực tư cách thành viên nhà trường và duy trì an toàn giao dịch.</p>
+            <p>• <b>Mã hóa mạnh mẽ (End-to-End & At-Rest):</b> Mọi thông tin định danh (PII) đều được mã hóa bằng thuật toán chuẩn quân sự AES-GCM 256-bit với dẫn xuất khóa PBKDF2 (100.000 vòng lặp) trước khi lưu trữ.</p>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-slate-800 mb-1">4.2. Bảo vệ dữ liệu học sinh (Dữ liệu trẻ em & vị thành niên)</h3>
+            <p>• Hệ thống chỉ vận hành trong phạm vi nội bộ học sinh trường; việc đăng ký tài khoản thể hiện sự đồng thuận của học sinh và sự giám sát của phụ huynh/nhà trường theo quy định tại Điều 20 Nghị định 13/2023/NĐ-CP.</p>
+            <p>• Danh tính thật và thông tin lớp học không bao giờ được hiển thị công khai trên giao diện web — hệ thống luôn tự động tạo Display Name ẩn danh.</p>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-slate-800 mb-1">4.3. Quyền của chủ thể dữ liệu (Data Subject Rights)</h3>
+            <p>Căn cứ Điều 9 Nghị định 13/2023/NĐ-CP, người dùng có các quyền tuyệt đối sau:</p>
+            <ul className="list-disc pl-5 space-y-1 my-1 text-slate-700">
+              <li><b>Quyền được biết & đồng ý:</b> Được thông báo minh bạch về mục đích xử lý dữ liệu trước khi đăng ký.</li>
+              <li><b>Quyền truy cập & đính chính:</b> Được xem hồ sơ cá nhân và gửi yêu cầu đính chính thông tin qua tính năng xác thực Admin.</li>
+              <li><b>Quyền xóa dữ liệu (Right to Erasure):</b> Học sinh có quyền yêu cầu xóa toàn bộ dữ liệu cá nhân, bài đăng và lịch sử tin nhắn khi tốt nghiệp hoặc ngừng sử dụng dịch vụ.</li>
+              <li><b>Quyền rút lại sự đồng ý:</b> Có thể hủy liên kết tài khoản bất kỳ lúc nào.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-slate-800 mb-1">4.4. Thời hạn lưu trữ và tiêu hủy an toàn</h3>
+            <p>• Video xác nhận bàn giao lưu trên Cloud/Drive được <b>tự động xóa vĩnh viễn sau 6 tháng</b> đối với các giao dịch thành công không có tranh chấp.</p>
+            <p>• Nhật ký kiểm toán an ninh (Audit Logs) được lưu trữ tối thiểu 12 tháng phục vụ đối soát an toàn thông tin theo quy định pháp luật.</p>
+          </div>
+
+          <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-[11px] text-indigo-900">
+            <b>Đầu mối tiếp nhận yêu cầu bảo vệ dữ liệu:</b> Ban Quản Trị Hệ Thống NT-Sell (Phòng Đoàn Thanh Niên / Tin Học trường). Mọi yêu cầu trích xuất hoặc xóa dữ liệu cá nhân sẽ được xử lý trong vòng <b>72 giờ làm việc</b>.
+          </div>
+        </div>
+      </div>
+
+      {/* Quy chế chia sẻ & mua bán tài liệu học tập */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-3 shadow-xs">
+        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-emerald-600" />
+          5. Quy Chế Chia Sẻ & Mua Bán Tài Liệu Học Tập (Sách, Đề Cương, PDF)
         </h2>
         <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
-          <p>• Tên thật, lớp học và số điện thoại được <b>mã hoá</b> trong cơ sở dữ liệu.</p>
-          <p>• Tuyệt đối không chia sẻ thông tin học sinh cho bên thứ ba hoặc các đơn vị quảng cáo.</p>
-          <p>• Video giao dịch trên Google Drive <b>tự động xóa vĩnh viễn sau 6 tháng</b> đối với các giao dịch hoàn tất không có tranh chấp.</p>
+          <p>• <b>Khuyến khích chia sẻ 0đ (Tặng miễn phí):</b> Tinh thần tương thân tương ái giữa các thế hệ học sinh trường. Tài liệu 0đ được ưu tiên duyệt nhanh và ghim huy hiệu "Tài liệu tặng".</p>
+          <p>• <b>Quyền tác giả & NXB:</b> Đối với sách in xuất bản, học sinh chỉ được chuyển nhượng sách cũ (đã mua hợp pháp). Nghiêm cấm hành vi photocopy thương mại số lượng lớn xâm phạm bản quyền.</p>
+          <p>• <b>Nghiêm cấm tuyệt đối:</b> Không chia sẻ đề thi mật quốc gia chưa công bố, tài liệu sai lệch lịch sử hoặc có nội dung không lành mạnh. Mọi vi phạm sẽ chuyển thẳng Hội Đồng Kỷ Luật nhà trường.</p>
+          <p>• <b>Miễn trách nhiệm xác thực mã S/N:</b> Tài liệu học tập không áp dụng quy trình kiểm tra số serial phần cứng và video 5 bước như máy tính điện tử.</p>
         </div>
       </div>
     </div>

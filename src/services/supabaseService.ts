@@ -113,49 +113,61 @@ export async function insertProductToSupabase(product: Product): Promise<boolean
 }
 
 
-// 3. ADMIN DUYỆT / TỪ CHỐI / SỬA / GỠ SẢN PHẨM (UPDATE)
+// 3. THAO TÁC QUẢN TRỊ VIÊN QUA EDGE FUNCTION (BẮT BUỘC MFA)
+export async function invokeAdminAction(action: string, payload: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    const { data, error } = await supabase.functions.invoke('admin-actions', {
+      body: { action, payload },
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (error || data?.error) {
+      const errMsg = data?.message || data?.error || error?.message || 'Lỗi thực thi thao tác quản trị';
+      console.error('Lỗi Edge Function admin-actions:', errMsg);
+      return { success: false, error: errMsg };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('Lỗi kết nối Edge Function admin-actions:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ADMIN DUYỆT / TỪ CHỐI / SỬA / GỠ SẢN PHẨM (QUA EDGE FUNCTION)
 export async function updateProductStatusInSupabase(
   id: string, 
   status: Product['status'], 
   adminNotes?: string
 ): Promise<boolean> {
   try {
-    const updateData: any = { status };
-    if (adminNotes !== undefined) {
-      // Bảo tồn seller_id gốc nếu có trong admin_notes
-      const { data: existing } = await supabase.from('products').select('admin_notes').eq('id', id).single();
-      if (existing?.admin_notes && typeof existing.admin_notes === 'string' && existing.admin_notes.startsWith(ORIGINAL_SELLER_PREFIX)) {
-        const prefix = existing.admin_notes.split('\n')[0];
-        updateData.admin_notes = adminNotes ? `${prefix}\n${adminNotes}` : prefix;
-      } else {
-        updateData.admin_notes = adminNotes;
+    let action = 'approve_product';
+    if (status === 'requires_edit') action = 'request_edit_product';
+    else if (status === 'rejected') action = 'reject_product';
+    else if (status === 'flagged') action = 'takedown_product';
+
+    const res = await invokeAdminAction(action, { id, reason: adminNotes });
+    if (!res.success && res.error) {
+      if (res.error.includes('MFA')) {
+        alert(res.error);
       }
     }
-    const { error } = await supabase.from('products').update(updateData).eq('id', id);
-    if (error) {
-      console.error('Lỗi cập nhật trạng thái sản phẩm:', error);
-      return false;
-    }
-    return true;
+    return res.success;
   } catch (err) {
-    console.error('Lỗi kết nối khi cập nhật:', err);
+    console.error('Lỗi kết nối khi cập nhật sản phẩm:', err);
     return false;
   }
 }
 
-// 4. XÓA SẢN PHẨM
+// 4. XÓA SẢN PHẨM (QUA EDGE FUNCTION)
 export async function deleteProductFromSupabase(id: string): Promise<boolean> {
-  try {
-    const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) {
-      console.error('Lỗi xóa sản phẩm:', error);
-      return false;
+  const res = await invokeAdminAction('delete_product', { id });
+  if (!res.success && res.error) {
+    if (res.error.includes('MFA')) {
+      alert(res.error);
     }
-    return true;
-  } catch (err) {
-    console.error('Lỗi kết nối khi xóa:', err);
-    return false;
   }
+  return res.success;
 }
 
 // 5. TIN NHẮN CHAT & CUỘC TRÒ CHUYỆN
@@ -204,7 +216,7 @@ export async function upsertConversationToSupabase(conv: Conversation): Promise<
 
 export async function fetchMessagesFromSupabase(conversationId?: string): Promise<ChatMessage[]> {
   try {
-    let query = supabase.from('messages').select('*').order('created_at', { ascending: true });
+    let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
     if (conversationId) {
       query = query.eq('conversation_id', conversationId);
     }
@@ -226,7 +238,7 @@ export async function fetchMessagesFromSupabase(conversationId?: string): Promis
 
 export async function insertMessageToSupabase(msg: ChatMessage): Promise<boolean> {
   try {
-    const { error } = await supabase.from('messages').insert([{
+    const { error } = await supabase.from('chat_messages').insert([{
       id: msg.id,
       conversation_id: msg.conversationId,
       sender_id: msg.senderId,
@@ -347,12 +359,13 @@ export async function fetchProfilesFromSupabase(): Promise<any[]> {
 }
 
 export async function deleteProfileFromSupabase(userId: string): Promise<boolean> {
-  try {
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
-    return !error;
-  } catch {
-    return false;
+  const res = await invokeAdminAction('delete_user', { userId });
+  if (!res.success && res.error) {
+    if (res.error.includes('MFA')) {
+      alert(res.error);
+    }
   }
+  return res.success;
 }
 
 // 9. THÔNG BÁO TOÀN WEB (BROADCAST ANNOUNCEMENT)
@@ -389,16 +402,12 @@ export async function publishBroadcastToSupabase(announcement: {
   durationSeconds: number;
 }): Promise<boolean> {
   try {
-    // Tắt các thông báo cũ
-    await supabase.from('broadcast_announcements').update({ is_active: false }).eq('is_active', true);
-
-    const { error } = await supabase.from('broadcast_announcements').insert([{
-      id: announcement.id,
-      message: announcement.message,
-      duration_seconds: announcement.durationSeconds,
-      is_active: true,
-      created_at: new Date().toISOString()
-    }]);
+    const res = await invokeAdminAction('publish_broadcast', { announcement });
+    if (!res.success && res.error) {
+      if (res.error.includes('MFA')) {
+        alert(res.error);
+      }
+    }
 
     // Đồng bộ LocalStorage & BroadcastChannel
     localStorage.setItem('ntsell_active_announcement', JSON.stringify({
@@ -413,7 +422,7 @@ export async function publishBroadcastToSupabase(announcement: {
       bc.close();
     }
 
-    return !error;
+    return res.success;
   } catch {
     localStorage.setItem('ntsell_active_announcement', JSON.stringify({
       ...announcement,
@@ -421,6 +430,81 @@ export async function publishBroadcastToSupabase(announcement: {
       isActive: true
     }));
     return true;
+  }
+}
+
+// 10. NHẬT KÝ KIỂM TOÁN HỆ THỐNG (AUDIT LOGS)
+export async function insertAuditLog(log: {
+  action: string;
+  targetType: string;
+  targetId?: string;
+  details?: any;
+}): Promise<void> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    await supabase.from('audit_logs').insert([{
+      actor_id: user?.id || 'anonymous',
+      actor_email: user?.email || undefined,
+      action: log.action,
+      target_type: log.targetType,
+      target_id: log.targetId || undefined,
+      details: log.details || {}
+    }]);
+  } catch (err) {
+    console.warn('Ghi audit log thất bại:', err);
+  }
+}
+
+export async function fetchAuditLogs(limit: number = 100): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+// 11. DỮ LIỆU CÁ NHÂN RIÊNG TƯ (USER PRIVATE DATA - TÁCH BIỆT KHỎI PUBLIC PROFILE)
+export async function saveUserPrivateData(userId: string, data: {
+  encryptedRealName?: string;
+  encryptedClassName?: string;
+  encryptedPhone?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('user_private_data').upsert({
+      user_id: userId,
+      encrypted_real_name: data.encryptedRealName,
+      encrypted_class_name: data.encryptedClassName,
+      encrypted_phone: data.encryptedPhone,
+      updated_at: new Date().toISOString()
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchUserPrivateData(userId: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_private_data')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (error || !data) return null;
+    return {
+      encryptedRealName: data.encrypted_real_name,
+      encryptedClassName: data.encrypted_class_name,
+      encryptedPhone: data.encrypted_phone
+    };
+  } catch {
+    return null;
   }
 }
 

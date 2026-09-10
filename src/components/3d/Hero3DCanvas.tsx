@@ -1,17 +1,18 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { FloatingShapesCSS } from './FloatingShapesCSS';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Mô hình máy tính Casio 3D thu nhỏ bồng bềnh ở góc Hero
-const Mini3DCalculator: React.FC = () => {
+const Mini3DCalculator: React.FC<{ motionEnabled: boolean }> = ({ motionEnabled }) => {
   const calcRef = useRef<THREE.Group | null>(null);
   const { viewport } = useThree();
   const isMobile = viewport.width < 6.0;
 
   useFrame((state) => {
-    if (!calcRef.current) return;
+    if (!calcRef.current || !motionEnabled) return;
     const t = state.clock.getElapsedTime();
     calcRef.current.rotation.y = Math.sin(t * 0.6) * 0.35 - 0.25;
     calcRef.current.rotation.x = Math.cos(t * 0.5) * 0.18 + 0.12;
@@ -109,11 +110,11 @@ const Mini3DCalculator: React.FC = () => {
 };
 
 // Mô hình quyển sách học đường 3D mở bồng bềnh - màu tương phản nổi bật
-const Floating3DBook: React.FC<{ position: [number, number, number]; scale?: number }> = ({ position, scale = 1.05 }) => {
+const Floating3DBook: React.FC<{ position: [number, number, number]; scale?: number; motionEnabled: boolean }> = ({ position, scale = 1.05, motionEnabled }) => {
   const bookRef = useRef<THREE.Group | null>(null);
 
   useFrame((state) => {
-    if (!bookRef.current) return;
+    if (!bookRef.current || !motionEnabled) return;
     const t = state.clock.getElapsedTime();
     bookRef.current.rotation.y = Math.sin(t * 0.7) * 0.25 + 0.2;
     bookRef.current.rotation.x = Math.cos(t * 0.5) * 0.15 + 0.35;
@@ -189,11 +190,12 @@ const FloatingPaper: React.FC<{
   rotation?: [number, number, number];
   scale?: number;
   speed?: number;
-}> = ({ position, rotation = [0, 0, 0], scale = 0.8, speed = 1.0 }) => {
+  motionEnabled: boolean;
+}> = ({ position, rotation = [0, 0, 0], scale = 0.8, speed = 1.0, motionEnabled }) => {
   const paperRef = useRef<THREE.Group | null>(null);
 
   useFrame((state) => {
-    if (!paperRef.current) return;
+    if (!paperRef.current || !motionEnabled) return;
     const t = state.clock.getElapsedTime() * speed;
     paperRef.current.position.y = position[1] + Math.sin(t * 1.3) * 0.08;
     paperRef.current.rotation.z = rotation[2] + Math.sin(t * 0.9) * 0.15;
@@ -232,35 +234,36 @@ const FloatingPaper: React.FC<{
 };
 
 // Các khối hình học toán học bồng bềnh đa lớp
-const FloatingMathGeometries: React.FC = () => {
+const FloatingMathGeometries: React.FC<{ motionEnabled: boolean; isCompact: boolean }> = ({ motionEnabled, isCompact }) => {
   const groupRef = useRef<THREE.Group | null>(null);
 
-  useFrame((state) => {
-    if (!groupRef.current) return;
+  useFrame((state, delta) => {
+    if (!groupRef.current || !motionEnabled) return;
     const { x, y } = state.pointer;
-    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, x * 0.35, 0.06);
-    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -y * 0.35, 0.06);
+    const smoothing = 1 - Math.exp(-7 * Math.min(delta, 0.05));
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, x * 0.35, smoothing);
+    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -y * 0.35, smoothing);
   });
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} position={isCompact ? [0.9, -0.05, 0] : [0, 0, 0]} scale={isCompact ? 0.72 : 1}>
       {/* 1. Máy tính 3D Casio bồng bềnh */}
-      <Mini3DCalculator />
+      <Mini3DCalculator motionEnabled={motionEnabled} />
 
       {/* 2. Quyển sách học đường 3D mở bồng bềnh ở vị trí thoáng giữa chữ và máy tính */}
-      <Floating3DBook position={[1.22, 0.05, 0.75]} scale={0.92} />
+      <Floating3DBook position={[1.22, 0.05, 0.75]} scale={0.92} motionEnabled={motionEnabled} />
 
       {/* 3. Các mảnh giấy bài thi / nháp toán học bồng bềnh quanh quyển sách & máy tính */}
-      <FloatingPaper position={[0.65, 0.8, 0.85]} rotation={[0.25, -0.3, 0.2]} scale={0.7} speed={1.1} />
-      <FloatingPaper position={[1.9, 0.75, 0.8]} rotation={[-0.2, 0.4, -0.25]} scale={0.68} speed={0.9} />
-      <FloatingPaper position={[0.7, -0.65, 0.8]} rotation={[0.1, 0.2, 0.35]} scale={0.62} speed={1.3} />
-      <FloatingPaper position={[2.0, -0.65, 0.8]} rotation={[-0.25, -0.2, -0.15]} scale={0.65} speed={0.8} />
+      <FloatingPaper position={[0.65, 0.8, 0.85]} rotation={[0.25, -0.3, 0.2]} scale={0.7} speed={1.1} motionEnabled={motionEnabled} />
+      <FloatingPaper position={[1.9, 0.75, 0.8]} rotation={[-0.2, 0.4, -0.25]} scale={0.68} speed={0.9} motionEnabled={motionEnabled} />
+      <FloatingPaper position={[0.7, -0.65, 0.8]} rotation={[0.1, 0.2, 0.35]} scale={0.62} speed={1.3} motionEnabled={motionEnabled} />
+      <FloatingPaper position={[2.0, -0.65, 0.8]} rotation={[-0.25, -0.2, -0.15]} scale={0.65} speed={0.8} motionEnabled={motionEnabled} />
 
       {/* Đèn spotlight riêng cho quyển sách & giấy nháp */}
       <pointLight position={[1.22, 0.5, 2.5]} intensity={2.2} color="#ffffff" />
 
       {/* 4. Khối 20 mặt Icosahedron đại diện cho toán học & hình học */}
-      <Float speed={2.0} rotationIntensity={1.5} floatIntensity={1.8} position={[1.2, 1.4, -1]}>
+      <Float enabled={motionEnabled} speed={2.0} rotationIntensity={1.5} floatIntensity={1.8} position={[1.2, 1.4, -1]}>
         <mesh>
           <icosahedronGeometry args={[1.0, 0]} />
           <meshStandardMaterial
@@ -275,7 +278,7 @@ const FloatingMathGeometries: React.FC = () => {
       </Float>
 
       {/* 3. Vòng nhẫn Torus xoay nhịp nhàng đa chiều */}
-      <Float speed={1.6} rotationIntensity={2.0} floatIntensity={1.4} position={[-2.8, -0.8, -0.5]}>
+      <Float enabled={motionEnabled} speed={1.6} rotationIntensity={2.0} floatIntensity={1.4} position={[-2.8, -0.8, -0.5]}>
         <mesh rotation={[Math.PI / 3, 0, 0]}>
           <torusGeometry args={[1.1, 0.22, 20, 40]} />
           <meshStandardMaterial
@@ -291,7 +294,7 @@ const FloatingMathGeometries: React.FC = () => {
       </Float>
 
       {/* 4. Khối lập phương dạ quang phím Casio */}
-      <Float speed={2.5} rotationIntensity={1.2} floatIntensity={2.0} position={[-2.4, 1.5, -1.2]}>
+      <Float enabled={motionEnabled} speed={2.5} rotationIntensity={1.2} floatIntensity={2.0} position={[-2.4, 1.5, -1.2]}>
         <mesh rotation={[0.5, 0.5, 0]}>
           <boxGeometry args={[0.85, 0.85, 0.85]} />
           <meshStandardMaterial
@@ -307,7 +310,7 @@ const FloatingMathGeometries: React.FC = () => {
       </Float>
 
       {/* 5. Khối cầu ngọc lục bảo nhỏ phản chiếu */}
-      <Float speed={1.8} rotationIntensity={0.8} floatIntensity={1.2} position={[4.2, 1.6, -1.5]}>
+      <Float enabled={motionEnabled} speed={1.8} rotationIntensity={0.8} floatIntensity={1.2} position={[4.2, 1.6, -1.5]}>
         <mesh>
           <sphereGeometry args={[0.55, 32, 32]} />
           <meshStandardMaterial
@@ -337,20 +340,32 @@ export const Hero3DCanvas: React.FC = () => {
       return false;
     }
   }, []);
+  const reducedMotion = useReducedMotion();
+  const [isVisible, setIsVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
+  const isCompact = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches, []);
+  const motionEnabled = isVisible && !reducedMotion;
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setIsVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   if (!hasWebGL) {
     return <FloatingShapesCSS />;
   }
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+    <div className="hero-3d-layer absolute inset-0 z-0 overflow-hidden opacity-30 sm:opacity-75" aria-hidden="true">
       <Canvas
+        frameloop={motionEnabled ? 'always' : 'demand'}
         camera={{ position: [0, 0, 6.5], fov: 48 }}
-        dpr={[1, 1.5]}
+        dpr={isCompact ? [1, 1.15] : [1, 1.35]}
+        performance={{ min: 0.5, max: 1, debounce: 180 }}
         gl={{
           alpha: true,
-          antialias: true,
-          powerPreference: 'default'
+          antialias: !isCompact,
+          powerPreference: 'high-performance'
         }}
       >
         <ambientLight intensity={1.1} />
@@ -358,7 +373,7 @@ export const Hero3DCanvas: React.FC = () => {
         <directionalLight position={[-8, -4, -4]} intensity={1.2} color="#a5b4fc" />
         <pointLight position={[2.5, 0, 3]} intensity={1.8} color="#38bdf8" />
         <pointLight position={[-2.5, 1, 2]} intensity={1.2} color="#c084fc" />
-        <FloatingMathGeometries />
+        <FloatingMathGeometries motionEnabled={motionEnabled} isCompact={isCompact} />
       </Canvas>
     </div>
   );

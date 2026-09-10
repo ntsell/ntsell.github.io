@@ -5,7 +5,6 @@ import {
   CheckCircle2, 
   AlertCircle, 
   FileUp, 
-  Sparkles, 
   Lock, 
   UserCheck,
   Mail,
@@ -14,7 +13,6 @@ import {
   RefreshCw,
   Users,
   Check,
-  Clock,
   Send
 } from 'lucide-react';
 import { StudentRosterItem, UserProfile, VerificationRequest } from '../types';
@@ -22,6 +20,7 @@ import { moderateDisplayName } from '../services/geminiModeration';
 import { encryptSensitiveData, generateUsernameFromRealName } from '../services/cryptoService';
 import { supabase } from '../services/supabaseClient';
 import { registerDeviceSession } from '../services/sessionService';
+import { TurnstileWidget, TURNSTILE_SITE_KEY } from './TurnstileWidget';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -30,18 +29,19 @@ interface AuthModalProps {
   onLoginSuccess: (user: UserProfile) => void;
 }
 
+// Danh sách chuẩn các lớp học của trường (38 lớp: 10C1-10C13, 11B1-11B13, 12A1-12A12)
+const SCHOOL_CLASSES = [
+  '10C1', '10C2', '10C3', '10C4', '10C5', '10C6', '10C7', '10C8', '10C9', '10C10', '10C11', '10C12', '10C13',
+  '11B1', '11B2', '11B3', '11B4', '11B5', '11B6', '11B7', '11B8', '11B9', '11B10', '11B11', '11B12', '11B13',
+  '12A1', '12A2', '12A3', '12A4', '12A5', '12A6', '12A7', '12A8', '12A9', '12A10', '12A11', '12A12'
+];
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   roster,
   onLoginSuccess
 }) => {
-  // Danh sách chuẩn các lớp học của trường (38 lớp: 10C1-10C13, 11B1-11B13, 12A1-12A12)
-  const SCHOOL_CLASSES = [
-    '10C1', '10C2', '10C3', '10C4', '10C5', '10C6', '10C7', '10C8', '10C9', '10C10', '10C11', '10C12', '10C13',
-    '11B1', '11B2', '11B3', '11B4', '11B5', '11B6', '11B7', '11B8', '11B9', '11B10', '11B11', '11B12', '11B13',
-    '12A1', '12A2', '12A3', '12A4', '12A5', '12A6', '12A7', '12A8', '12A9', '12A10', '12A11', '12A12'
-  ];
 
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
   
@@ -53,8 +53,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // 'request_admin' -> Step 2 (Case 3): Không tìm thấy -> Request Admin Verification form
   // 'request_submitted' -> Thông báo gửi admin thành công
   const [step, setStep] = useState<
-    'input' | 'confirm_unique' | 'select_duplicate' | 'otp_password' | 'request_admin' | 'request_submitted'
+    'input' | 'confirm_unique' | 'select_duplicate' | 'otp_password' | 'request_admin' | 'request_submitted' | 'mfa_verify'
   >('input');
+
+  // Rate limiting và MFA states
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaQrCode, setMfaQrCode] = useState<string | null>(null);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [pendingMfaUser, setPendingMfaUser] = useState<UserProfile | null>(null);
+
+  const getCaptchaToken = (): string | undefined => {
+    if (turnstileToken) return turnstileToken;
+    try {
+      return (window as any).turnstile?.getResponse?.() || (window as any).hcaptcha?.getResponse?.() || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000; // 15 phút
+
+  const checkLockout = (): { isLocked: boolean; remainingSec: number } => {
+    try {
+      const lockedUntil = Number(localStorage.getItem('ntsell_lockout_until') || '0');
+      const remaining = lockedUntil - Date.now();
+      if (remaining > 0) {
+        return { isLocked: true, remainingSec: Math.ceil(remaining / 1000) };
+      }
+    } catch {}
+    return { isLocked: false, remainingSec: 0 };
+  };
+
+  const recordFailedLogin = (): number => {
+    const attempts = Number(sessionStorage.getItem('ntsell_failed_logins') || '0') + 1;
+    sessionStorage.setItem('ntsell_failed_logins', String(attempts));
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      localStorage.setItem('ntsell_lockout_until', String(Date.now() + LOCKOUT_MS));
+    }
+    return attempts;
+  };
+
+  const clearFailedLogins = () => {
+    sessionStorage.removeItem('ntsell_failed_logins');
+    localStorage.removeItem('ntsell_lockout_until');
+  };
   
   // Khối lọc nhanh (Frontend state)
   const [selectedGrade, setSelectedGrade] = useState<'ALL' | '10' | '11' | '12'>('ALL');
@@ -66,7 +111,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [phone, setPhone] = useState('');
+  const phone = '';
 
   // Login form field
   const [loginPassword, setLoginPassword] = useState('');
@@ -74,7 +119,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Match and OTP state
   const [matchingStudents, setMatchingStudents] = useState<StudentRosterItem[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRosterItem | null>(null);
-  const [generatedOtp, setGeneratedOtp] = useState('');
   const [userEnteredOtp, setUserEnteredOtp] = useState('');
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
@@ -150,14 +194,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Cập nhật realtime preview mã hóa PII
   React.useEffect(() => {
     if (realName) {
-      encryptSensitiveData(realName).then(setPreviewEncryptedName);
+      encryptSensitiveData(realName).then(setPreviewEncryptedName).catch(() => {
+        setPreviewEncryptedName('ENC_V2_••••••••');
+      });
       setPreviewAutoUsername(generateUsernameFromRealName(realName));
     } else {
       setPreviewEncryptedName('');
       setPreviewAutoUsername('');
     }
     if (className) {
-      encryptSensitiveData(className).then(setPreviewEncryptedClass);
+      encryptSensitiveData(className).then(setPreviewEncryptedClass).catch(() => {
+        setPreviewEncryptedClass('ENC_V2_••••••••');
+      });
+    } else {
+      setPreviewEncryptedClass('');
     }
   }, [realName, className]);
 
@@ -198,12 +248,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setUserEnteredOtp('');
     setSelectedStudent(student);
 
+    const captchaToken = getCaptchaToken();
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setIsLoading(false);
+      setErrorMessage('Vui lòng hoàn tất xác minh bảo mật (Cloudflare Turnstile) trước khi yêu cầu gửi mã OTP.');
+      return;
+    }
+
+    // Kích hoạt Database Rate Limiting cho luồng gửi OTP
+    const otpRateLimitKey = `otp_${targetEmail.toLowerCase().trim()}`;
     try {
-      // Gọi Supabase Auth để gửi mã OTP 6 số về email thật của học sinh
+      const { data: rlData } = await supabase.rpc('check_and_record_rate_limit', {
+        p_key: otpRateLimitKey,
+        p_max_attempts: 3,
+        p_window_seconds: 300,
+        p_block_seconds: 600
+      });
+      if (rlData && rlData.blocked) {
+        setIsLoading(false);
+        setErrorMessage(`Yêu cầu gửi mã OTP tạm thời bị khóa do gửi quá nhiều lần! Vui lòng thử lại sau ${rlData.remaining_seconds} giây.`);
+        return;
+      }
+    } catch (e) {
+      console.warn('DB rate limit check fallback:', e);
+    }
+
+    try {
+      // Gọi Supabase Auth để gửi mã OTP 6 số về email thật của học sinh kèm captchaToken
       const { error } = await supabase.auth.signInWithOtp({
         email: targetEmail,
         options: {
-          shouldCreateUser: true
+          shouldCreateUser: true,
+          captchaToken: captchaToken || undefined
         }
       });
 
@@ -247,6 +323,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    // 0. KIỂM TRA RATE LIMIT CHỐNG BRUTE-FORCE
+    const lockout = checkLockout();
+    if (lockout.isLocked) {
+      const mins = Math.ceil(lockout.remainingSec / 60);
+      setErrorMessage(`Tài khoản tạm thời bị khóa do nhập sai quá ${MAX_LOGIN_ATTEMPTS} lần liên tiếp. Vui lòng thử lại sau ${mins} phút để bảo vệ an toàn.`);
+      return;
+    }
+
     // ==========================================================
     // 1. KIỂM TRA ĐĂNG NHẬP ADMIN (Ưu tiên tuyệt đối)
     // ==========================================================
@@ -263,27 +347,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const targetAdminEmail = isAdmin1 ? 'admin1@ntsell.edu.vn' : 'admin2@ntsell.edu.vn';
       const expectedClass = isAdmin1 ? '11B10' : '12A1';
 
+      if (!loginPassword.trim()) {
+        setErrorMessage('Vui lòng nhập mật khẩu Quản Trị Viên.');
+        return;
+      }
+
+      const captchaToken = getCaptchaToken();
+      if (TURNSTILE_SITE_KEY && !captchaToken) {
+        setErrorMessage('Vui lòng hoàn tất xác minh bảo mật (Cloudflare Turnstile) trước khi đăng nhập.');
+        return;
+      }
+
+      // Kích hoạt Database Rate Limiting (Server-side brute force protection)
+      const adminRateLimitKey = `admin_${targetAdminEmail}`;
+      try {
+        const { data: rlData } = await supabase.rpc('check_and_record_rate_limit', {
+          p_key: adminRateLimitKey,
+          p_max_attempts: MAX_LOGIN_ATTEMPTS,
+          p_window_seconds: 900,
+          p_block_seconds: 900
+        });
+        if (rlData && rlData.blocked) {
+          setErrorMessage(`Tài khoản tạm thời bị khóa do nhập sai nhiều lần! Vui lòng thử lại sau ${rlData.remaining_seconds} giây.`);
+          return;
+        }
+      } catch (e) {
+        console.warn('DB rate limit check fallback:', e);
+      }
+
       setIsLoading(true);
       try {
-        // Đăng nhập thật vào Supabase Auth với session bảo mật
-        let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        // Đăng nhập bảo mật vào Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: targetAdminEmail,
-          password: loginPassword.trim() || 'AdminPassword123!'
+          password: loginPassword.trim(),
+          options: captchaToken ? { captchaToken } : undefined
         });
-
-        // Nếu người dùng nhập mật khẩu admin cũ (786602) -> đăng nhập bằng mật khẩu mặc định
-        if (authError && loginPassword.trim() === '786602') {
-          const retry = await supabase.auth.signInWithPassword({
-            email: targetAdminEmail,
-            password: 'AdminPassword123!'
-          });
-          authData = retry.data;
-          authError = retry.error;
-        }
 
         if (authError || !authData?.user) {
           setIsLoading(false);
-          setErrorMessage('Mật khẩu Quản Trị Viên không chính xác!');
+          const attempts = recordFailedLogin();
+          if (attempts >= MAX_LOGIN_ATTEMPTS) {
+            setErrorMessage(`Nhập sai ${attempts} lần liên tiếp! Tài khoản tạm thời bị khóa 15 phút.`);
+          } else {
+            setErrorMessage(`Mật khẩu Quản Trị Viên không chính xác! Bạn còn ${MAX_LOGIN_ATTEMPTS - attempts} lần thử.`);
+          }
           return;
         }
 
@@ -308,8 +416,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           createdAt: new Date().toISOString()
         };
 
+        // Bắt buộc xác thực 2 bước (MFA / TOTP) cho tài khoản Quản Trị Viên
+        const { data: mfaFactors } = await supabase.auth.mfa.listFactors();
+        const totp = mfaFactors?.totp?.[0];
+        if (totp && totp.status === 'verified') {
+          setMfaFactorId(totp.id);
+          setMfaQrCode(null);
+          setMfaSecret(null);
+          setPendingMfaUser(adminUser);
+          setStep('mfa_verify');
+          setIsLoading(false);
+          return;
+        }
+
+        // Nếu chưa thiết lập TOTP, tự động khởi tạo enrollment
+        const { data: enrollData, error: enrollErr } = await supabase.auth.mfa.enroll({
+          factorType: 'totp',
+          issuer: 'NTSell Admin',
+          friendlyName: adminUser.displayName
+        });
+
+        if (enrollErr || !enrollData) {
+          throw new Error('Bắt buộc thiết lập xác thực 2 bước (MFA/TOTP) cho Quản Trị Viên: ' + (enrollErr?.message || 'Không thể khởi tạo mã TOTP'));
+        }
+
+        setMfaFactorId(enrollData.id);
+        setMfaQrCode(enrollData.totp.qr_code);
+        setMfaSecret(enrollData.totp.secret);
+        setPendingMfaUser(adminUser);
+        setStep('mfa_verify');
         setIsLoading(false);
-        await completeLoginWithSession(adminUser);
+        return;
       } catch (err: any) {
         setIsLoading(false);
         setErrorMessage('Lỗi xác thực hệ thống: ' + (err?.message || 'Vui lòng thử lại'));
@@ -332,14 +469,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setIsLoading(true);
       setTimeout(async () => {
-        setIsLoading(false);
-
         // Tìm học sinh theo họ tên
         const studentInAnyClass = roster.find(
           s => s.realName.toLowerCase().trim() === trimmedName.toLowerCase()
         );
 
         if (!studentInAnyClass) {
+          setIsLoading(false);
           setErrorMessage('Không tìm thấy tài khoản học sinh tương ứng với tên này!');
           return;
         }
@@ -348,31 +484,59 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const studentEmail = `${studentInAnyClass.id.toLowerCase()}@student.ntsell.edu.vn`;
         let authId = 'usr_' + studentInAnyClass.id;
 
+        const captchaToken = getCaptchaToken();
+        if (TURNSTILE_SITE_KEY && !captchaToken) {
+          setIsLoading(false);
+          setErrorMessage('Vui lòng hoàn tất xác minh bảo mật (Cloudflare Turnstile) trước khi đăng nhập.');
+          return;
+        }
+
+        // Kích hoạt Database Rate Limiting cho tài khoản học sinh
+        const studentRateLimitKey = `student_${studentEmail}`;
         try {
-          let { data: authRes } = await supabase.auth.signInWithPassword({
+          const { data: rlData } = await supabase.rpc('check_and_record_rate_limit', {
+            p_key: studentRateLimitKey,
+            p_max_attempts: MAX_LOGIN_ATTEMPTS,
+            p_window_seconds: 900,
+            p_block_seconds: 900
+          });
+          if (rlData && rlData.blocked) {
+            setIsLoading(false);
+            setErrorMessage(`Tài khoản tạm thời bị khóa do nhập sai nhiều lần! Vui lòng thử lại sau ${rlData.remaining_seconds} giây.`);
+            return;
+          }
+        } catch (e) {
+          console.warn('DB rate limit check fallback:', e);
+        }
+
+        try {
+          const { data: authRes, error: authError } = await supabase.auth.signInWithPassword({
             email: studentEmail,
-            password: loginPassword.trim()
+            password: loginPassword.trim(),
+            options: captchaToken ? { captchaToken } : undefined
           });
 
-          if (!authRes?.user) {
-            // Tạo tài khoản Supabase Auth ngầm nếu chưa có
-            const signUpRes = await supabase.auth.signUp({
-              email: studentEmail,
-              password: loginPassword.trim()
-            });
-            if (signUpRes.data?.user) {
-              authId = signUpRes.data.user.id;
-              await supabase.from('profiles').upsert({
-                id: authId,
-                role: 'student',
-                display_name: generateUsernameFromRealName(studentInAnyClass.realName),
-                email: studentEmail
-              });
+          if (authError || !authRes?.user) {
+            setIsLoading(false);
+            const attempts = recordFailedLogin();
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+              setErrorMessage(`Nhập sai ${attempts} lần liên tiếp! Tài khoản tạm thời bị khóa 15 phút.`);
+            } else {
+              setErrorMessage(`Mật khẩu không chính xác hoặc tài khoản chưa được kích hoạt! Bạn còn ${MAX_LOGIN_ATTEMPTS - attempts} lần thử.`);
             }
-          } else {
-            authId = authRes.user.id;
+            return;
           }
-        } catch {}
+          authId = authRes.user.id;
+          clearFailedLogins();
+          try {
+            await supabase.rpc('reset_rate_limit', { p_key: studentRateLimitKey });
+          } catch {}
+        } catch {
+          setIsLoading(false);
+          setErrorMessage('Lỗi kết nối máy chủ xác thực.');
+          return;
+        }
+        setIsLoading(false);
 
         // Tạo profile đăng nhập
         const encRealName = await encryptSensitiveData(studentInAnyClass.realName);
@@ -593,6 +757,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setStep('request_submitted');
     }, 600);
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaCode.trim() || !pendingMfaUser || !mfaFactorId) return;
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const { error: verifyErr } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: mfaFactorId,
+        code: mfaCode.trim()
+      });
+      if (verifyErr) throw verifyErr;
+
+      clearFailedLogins();
+      try {
+        if (pendingMfaUser.email) {
+          await supabase.rpc('reset_rate_limit', { p_key: `admin_${pendingMfaUser.email}` });
+        }
+      } catch {}
+      setIsLoading(false);
+      await completeLoginWithSession(pendingMfaUser);
+    } catch {
+      setIsLoading(false);
+      setErrorMessage('Mã xác thực 2FA/TOTP không hợp lệ hoặc đã hết hạn.');
+    }
   };
 
   return (
@@ -844,6 +1034,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <span>{errorMessage}</span>
                 </div>
               )}
+
+              <TurnstileWidget 
+                onToken={(t) => setTurnstileToken(t)} 
+                onExpire={() => setTurnstileToken('')} 
+              />
 
               <button
                 type="submit"
@@ -1265,6 +1460,88 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 Đóng Cửa Sổ
               </button>
             </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* XÁC THỰC 2FA / TOTP CHO QUẢN TRỊ VIÊN                            */}
+          {/* ================================================================= */}
+          {step === 'mfa_verify' && (
+            <form onSubmit={handleMfaVerify} className="space-y-4">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-slate-800 text-base">Xác Thực 2 Bước (MFA/TOTP)</h4>
+                <p className="text-xs text-slate-500">
+                  {mfaQrCode 
+                    ? 'Quét mã QR dưới đây bằng Google Authenticator hoặc Authy để kích hoạt bảo vệ 2 lớp bắt buộc cho Quản Trị Viên.'
+                    : 'Tài khoản Quản Trị Viên đã kích hoạt bảo vệ 2 lớp. Vui lòng mở Google Authenticator hoặc Authy và nhập mã 6 số.'}
+                </p>
+              </div>
+
+              {mfaQrCode && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-2 animate-in fade-in">
+                  <p className="text-[11px] font-bold text-slate-700">
+                    Quét mã QR để thêm tài khoản:
+                  </p>
+                  <img 
+                    src={mfaQrCode} 
+                    alt="MFA QR Code" 
+                    className="w-36 h-36 mx-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xs" 
+                  />
+                  {mfaSecret && (
+                    <p className="text-[10px] text-slate-500 font-mono select-all bg-slate-200/60 p-1.5 rounded-lg break-all">
+                      Khóa nhập tay: <span className="font-bold text-slate-800">{mfaSecret}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-xs text-red-700 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                  <p className="font-medium">{errorMessage}</p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Mã 6 chữ số từ ứng dụng Authenticator:
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="123456"
+                  autoFocus
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-center text-xl tracking-[0.3em] font-mono font-bold focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-hidden transition"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('input');
+                    setMfaCode('');
+                    setMfaQrCode(null);
+                    setMfaSecret(null);
+                    setPendingMfaUser(null);
+                  }}
+                  className="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
+                >
+                  Quay Lại
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || mfaCode.length < 6}
+                  className="w-2/3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
+                >
+                  {isLoading ? 'Đang xác thực...' : 'Xác Thực & Đăng Nhập'}
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </div>
