@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { 
   X, 
   Shield, 
@@ -238,6 +238,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     }, 120);
   };
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setContentHeight(undefined);
+      return;
+    }
+    const updateHeight = () => {
+      if (contentRef.current) {
+        setContentHeight(contentRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const ro = new ResizeObserver(updateHeight);
+    if (contentRef.current) {
+      ro.observe(contentRef.current);
+    }
+    return () => ro.disconnect();
+  }, [isOpen, authMode, step, deviceWarningInfo]);
 
   if (!isOpen) return null;
 
@@ -787,7 +808,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transition-all duration-350 ease-[cubic-bezier(0.33,1,0.68,1)] animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col">
+      <div 
+        style={{ height: contentHeight ? `${contentHeight}px` : undefined }}
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transition-[height] duration-350 ease-[cubic-bezier(0.33,1,0.68,1)] animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col"
+      >
+        <div ref={contentRef} className="w-full flex flex-col">
         
         {/* Header modal */}
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
@@ -841,7 +866,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
           {/* ================================================================= */}
           {/* CẢNH BÁO THIẾT BỊ ĐANG ĐĂNG NHẬP Ở NƠI KHÁC (SINGLE-DEVICE MODE)   */}
           {/* ================================================================= */}
@@ -1546,5 +1571,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
       </div>
     </div>
+  </div>
   );
 };
